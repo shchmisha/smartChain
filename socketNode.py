@@ -161,27 +161,34 @@ class SocketNode:
                 chain_token = data['chain_token']
                 chain = self.chains[chain_token]
                 # print(chain.verify_request(data))
+                if 'pk_signature' not in data:
+                    print(data['route'])
                 if chain.verify_request(data):
+                    print(data['route'])
                     self.chains[chain_token].add_block(data['block'],data['next_peer'])
             elif data['route'] == 'add_document':
                 chain_token = data['chain_token']
                 chain = self.chains[chain_token]
                 # print(chain.verify_request(data))
-
+                if 'pk_signature' not in data:
+                    print(data['route'])
                 if chain.verify_request(data):
+                    # print(data)
                     self.chains[chain_token].add_document(data['document'])
             elif data['route'] == 'replace_data':
                 chain_token = data['chain_token']
                 chain = self.chains[chain_token]
                 # print(chain.verify_request(data))
-
+                if 'pk_signature' not in data:
+                    print(data['route'])
                 if chain.verify_request(data):
                     self.chains[chain_token].replace_data(data['chain'], data['pool'], data['peers'], data['next_peer'])
             elif data['route'] == 'sync': #check
                 chain_token = data['chain_token']
                 chain = self.chains[chain_token]
                 # print(chain.verify_request(data))
-
+                if 'pk_signature' not in data:
+                    print(data['route'])
                 if chain.verify_request(data):
                     self.chains[chain_token].sync(data['port'])
 
@@ -190,15 +197,10 @@ class SocketNode:
                 # things to do with peers and connections should all be handled in the node
                 # the vm should only know the port, root port and peers
                 chain = self.chains[chain_token]
-                # print(chain.verify_request(data))
+                if 'pk_signature' not in data:
+                    print(data['route'])
                 if chain.verify_request(data):
                     self.chains[chain_token].sync_peers(data['peers'], data['root_peer'])
-            elif data['route'] == 'mine_block':
-                chain_token = data['chain_token']
-                chain = self.chains[chain_token]
-                # print(chain.verify_request(data),data)
-                if chain.verify_request(data):
-                    self.chains[chain_token].blockchain_mine()
             #####################
             elif data['route'] == 'add_chain':
                 # print("add chain")

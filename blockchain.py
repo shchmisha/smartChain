@@ -48,7 +48,8 @@ class Blockchain:
             return True
 
     def replaceChain(self, chain):
-        if len(chain) <= len(self.chain):
+        if len(chain) < len(self.chain):
+            # chains can be equal length
             print("chain must be longer")
             return False
 

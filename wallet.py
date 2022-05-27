@@ -94,16 +94,19 @@ if __name__ == '__main__':
     # encData = wallet.encrypt(data)
     get_data_script = {'route': 'get_data', "instruction": "$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }"}
     get_data = {'script': get_data_script, 'signature': wallet.sign(get_data_script), 'public_key': wallet.eccPublicKey}
-    signature = wallet.sign(get_data)
-    get_data['pk_sign']=signature
-
-
-    new_data = dict(get_data)
-    sign = new_data['pk_sign']
-    new_data.pop('pk_sign')
-    print(wallet.verify(wallet.eccPublicKey, new_data, sign))
-    print(get_data)
-    print(new_data)
+    # signature = wallet.sign(get_data)
+    # get_data['pk_sign']=signature
+    #
+    #
+    # new_data = dict(get_data)
+    # sign = new_data['pk_sign']
+    # new_data.pop('pk_sign')
+    # print(wallet.verify(wallet.eccPublicKey, new_data, sign))
+    # print(get_data)
+    # print(new_data)
+    sign1= wallet.sign("data")
+    sign2=wallet.sign("data")
+    print(sign1, sign2)
     # print({'publicKey': wallet.eccPublicKey, 'data': encData, 'signature': signature})
     # decJsonData = wallet.decrypt(wallet.key, wallet.nonce, encData)
     # print(decJsonData)

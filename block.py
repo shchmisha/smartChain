@@ -32,6 +32,7 @@ class Block:
     @staticmethod
     def is_valid_block(lastBlock, block):
         if block.lastHash != lastBlock.hash:
+            # print(block.lastHash, lastBlock.hash)
             print("hashes dont match")
             return False
 

@@ -55,12 +55,12 @@ class Interface:
 
     def prepare_request(self, data):
         signature = self.wallet.sign(data)
-        data['pk_sign'] = signature
+        data['pk_signature'] = signature
         return data
 
     def verify_request(self, request):
-        signature = request['pk_sign']
-        request.pop('pk_sign')
+        signature = request['pk_signature']
+        request.pop('pk_signature')
         return self.wallet.verify(self.wallet.eccPublicKey, request, signature)
 
     def add_default_instructions(self):
@@ -79,6 +79,7 @@ class Interface:
         self.next_peer = next_peer
         newChain = self.bc.blockchain_from_json(chain)
         self.bc.documentMap = pool
+        # if the chain length is one and it only holds is the initial instructions,
         replaced = self.bc.replaceChain(newChain)
         return replaced
 
@@ -227,14 +228,14 @@ class Interface:
     def mine_blocks(self):
         count = 0
         while True:
-            time.sleep(20.0)
+            time.sleep(40.0)
             # print(self.bc.doc_map_to_json())
             if self.next_peer==self.port:
                 self.blockchain_mine()
             #     count+=1
             # self.blockchain_mine()
             # print(self.next_peer, self.port, count)
-            time.sleep(20.0)
+            time.sleep(40.0)
 
 
 
