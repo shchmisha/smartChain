@@ -1,16 +1,12 @@
 import json
-import logging
-import os
 import random
 import socket
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import secrets
 
-from block import Block
-from virtualMachine import Interface
-from wallet import Wallet
+from node.level_two.virtualMachine import Interface
+from node.level_two.wallet import Wallet
 
 
 # add a signalling where a test message is sent out and then if any node responds then they are activeand valid

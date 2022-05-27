@@ -1,13 +1,12 @@
 import json
 import socket
-import sys
 import random
 import threading
 import time
 
-from blockchain import Blockchain
-from langParser import Interpreter
-from wallet import Wallet
+from node.level_one.blockchain import Blockchain
+from node.level_two.langParser import Interpreter
+from node.level_two.wallet import Wallet
 
 # INTERFACE:
 # A parser class which can parse instructions. Will also have the chain tied to it, assigned in the contructor,  to allow blockchain interaction inside the language

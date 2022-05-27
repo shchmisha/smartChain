@@ -1,4 +1,4 @@
-from block import Block
+from node.level_one.block import Block
 
 # have a blockchain
 # add block

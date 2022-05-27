@@ -1,4 +1,4 @@
-from blockchain import Blockchain
+from node.level_one.blockchain import Blockchain
 
 # BLOCKCHAIN COMMANDS:
 # BLOCKCHAIN UPLOAD VAR

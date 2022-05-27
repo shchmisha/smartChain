@@ -1,5 +1,5 @@
 from time import time
-from cryptoHash import cryptoHash
+from node.level_one.cryptoHash import cryptoHash
 
 GENESIS_DATA = {
     'timestamp': 1,
