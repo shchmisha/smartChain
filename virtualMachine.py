@@ -93,6 +93,8 @@ class Interface:
             print(self.bc.blockchain_to_json())
             self.bc.documentMap = []
             next_peer = self.peers[random.randint(0,len(self.peers)-1)]
+            print("actual next peer", next_peer, self.peers)
+            self.next_peer = next_peer
 
             self.send_data(self.prepare_request({'chain_token': self.token,'route': 'add_block', 'block': block.to_json(), 'next_peer': next_peer}))
 
@@ -156,6 +158,7 @@ class Interface:
     def add_block(self, blockJson, next_peer):
         # need to make sure that next_peer is assigned at the correct time
         self.next_peer = next_peer
+        print("new nextpeer", self.port, self.next_peer)
         # print(self.port, self.next_peer)
         # print(block.to_json())
         if(self.bc.addNewBlock(blockJson)):
@@ -173,7 +176,7 @@ class Interface:
                 client_sock.connect(('localhost', peer))
                 client_sock.send(json.dumps(self.prepare_request({'chain_token': self.token,'route': 'sync','port': self.port})).encode('utf-8'))
                 client_sock.close()
-                print("corrupt block")
+                print("corrupt block", self.bc.chain[-1].to_json(), blockJson)
             except:
                 if peer == self.root_port:
                     self.root_port = self.port
@@ -228,14 +231,13 @@ class Interface:
     def mine_blocks(self):
         count = 0
         while True:
-            time.sleep(40.0)
+            time.sleep(10.0)
             # print(self.bc.doc_map_to_json())
-            if self.next_peer==self.port:
-                self.blockchain_mine()
+            self.blockchain_mine()
             #     count+=1
             # self.blockchain_mine()
             # print(self.next_peer, self.port, count)
-            time.sleep(40.0)
+            time.sleep(10.0)
 
 
 
