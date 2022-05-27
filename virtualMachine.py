@@ -90,13 +90,13 @@ class Interface:
             # self.bc.clearBlockchainDocuments()
             # print(self.bc.blockchain_to_json())
             print(self.port)
-            print(self.bc.blockchain_to_json())
+            # print(self.bc.blockchain_to_json())
             self.bc.documentMap = []
             next_peer = self.peers[random.randint(0,len(self.peers)-1)]
-            print("actual next peer", next_peer, self.peers)
+            # print("actual next peer", next_peer, self.peers)
             self.next_peer = next_peer
 
-            self.send_data(self.prepare_request({'chain_token': self.token,'route': 'add_block', 'block': block.to_json(), 'next_peer': next_peer}))
+            self.send_data(self.prepare_request({'chain_token': self.token,'route': 'add_block', 'block': block.to_json(), 'next_peer': self.next_peer}))
 
             return block.to_json()
 
@@ -118,7 +118,7 @@ class Interface:
         self.interpreter.user_request = user_request
         # print(self.interpreter.user_request)
         upload_data, return_data = self.interpreter.exec_instruction(instruction)
-        # print(upload_data, return_data)
+        # print(instruction, upload_data, return_data)
         if upload_data != {}: # check that the data to upload is not empty
             signature = self.wallet.sign(upload_data)
             data = {'content': upload_data}
@@ -126,10 +126,9 @@ class Interface:
             data["public_key"] = self.wallet.eccPublicKey
             self.bc.documentMap.append(data)
             self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'add_document', 'document': data}))
-
+        print(return_data)
         # here the blockchain will record the interaction in the chain
         # it will consist of the timestamp, the signature from the interface
-
         return return_data
 
     def add_script(self, request):
@@ -158,7 +157,7 @@ class Interface:
     def add_block(self, blockJson, next_peer):
         # need to make sure that next_peer is assigned at the correct time
         self.next_peer = next_peer
-        print("new nextpeer", self.port, self.next_peer)
+        # print("new nextpeer", self.port, self.next_peer)
         # print(self.port, self.next_peer)
         # print(block.to_json())
         if(self.bc.addNewBlock(blockJson)):

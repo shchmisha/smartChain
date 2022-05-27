@@ -243,16 +243,23 @@ def upload_test_data(node, chain_token):
 
     while True:
         time.sleep(30)
-        print("testing")
+        print("testing data upload")
         node.chains[chain_token].interact({'route': 'upload_data', 'data': content,'chain_token': chain_token})
         content = str(secrets.token_hex(16))
+
+def get_test_data(node, chain_token):
+    while True:
+        time.sleep(20)
+        print("testing getting data")
+        node.chains[chain_token].interact({'route': 'get_data','chain_token': chain_token})
+        time.sleep(20)
 
 def create_test_chain(node, n):
     chain_token, pk, cp = node.create_chain(n)
     thread = threading.Thread(target=upload_test_data, args=(node, chain_token))
     thread.start()
-    # thread2 = threading.Thread(target=print_chain, args=(node, chain_token))
-    # thread2.start()
+    thread2 = threading.Thread(target=get_test_data, args=(node, chain_token))
+    thread2.start()
 
 if __name__ == '__main__':
     ROOT_PORT = 5000
