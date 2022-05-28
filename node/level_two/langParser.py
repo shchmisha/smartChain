@@ -19,16 +19,22 @@ from node.level_one.blockchain import Blockchain
 
 # userRequest.user_request = dict({"key":"key", "data": {"content1": "content", "content2": "content"}, "signature": "signature"})
 
-
-# different scripts will be saved under different routes
-
-# figure out how to save scripts
-# there will be a certain script that will be responsible for saving and replacing scripts
-# or
-# save them through the interface directly
-
 # when the chain is created, create the default configurations and add them to the chain straight away. when syncing, these can be replaced
 # (networking transfers are not put through the interpreter)
+
+# add dictionaries
+# dictionaries will be dictated by the dict keyword
+# $var = { "STRING": value, "STRING2": value2 }
+# if tokens[-1] == EQUALS: tokens.append(DICT)
+# store user request as a dictionary itself
+
+# what to add:
+#   dictionaries
+#   ways to get specific documents by a certain key
+#   ways to compare data from user request
+#   ways to interact with data in dictionaries
+
+
 
 
 class Interpreter:

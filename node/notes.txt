@@ -1,0 +1,5 @@
+What to add:
+    better way of fixing broken chains
+
+    when sending a file, break the file up into parts each size of a 1000 bytes
+    create a while loop that sends these files to the server while it has not finished sending all the bytes

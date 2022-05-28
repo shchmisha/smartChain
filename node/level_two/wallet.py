@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
 from Cryptodome.Cipher import AES
 from secrets import token_bytes
 
+
 class Wallet:
     def __init__(self, eccPrivateKey = None, skey = None):
         self.eccPrivateKey = self.getPrivate(eccPrivateKey)

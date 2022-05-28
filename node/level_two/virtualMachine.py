@@ -125,7 +125,7 @@ class Interface:
             data["public_key"] = self.wallet.eccPublicKey
             self.bc.documentMap.append(data)
             self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'add_document', 'document': data}))
-        print(return_data)
+        # print(return_data)
         # here the blockchain will record the interaction in the chain
         # it will consist of the timestamp, the signature from the interface
         return return_data
