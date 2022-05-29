@@ -35,7 +35,7 @@ from node.level_one.blockchain import Blockchain
 #   ways to interact with data in dictionaries
 
 
-
+# when inputting something from user request, lex the request,then add it to the dictionaries, so that it could be used for comparisonsand interractions
 
 class Interpreter:
     def __init__(self, blockchain):
@@ -394,18 +394,31 @@ class Interpreter:
 
                             self.exec_func(toks, index)
                             string+=self.return_val
+                        #     addmore indexes
 
                         elif varval[0:4] == "DICT":
+
                             if varval[0:4]+" "+toks[index+1] == "DICT ARR":
                                 # eval the expression inside by providing the toks and the index after the ARR token
+
                                 val, add_to = self.evalExpr(toks, index + 2)
-                                if self.dicts[toks[index][4:]][val[8:-1]][:3]=="NUM":
+                                dict_val = self.dicts[toks[index][4:]][val[8:-1]]
+                                if dict_val[:3]=="NUM":
+
                                     if isstr==1:
-                                        string+="\""+self.dicts[toks[index][4:]][val[8:-1]][4:]+"\""
+                                        # print(self.dicts[toks[index][4:]][val[8:-1]][4:])
+                                        string+="\""+dict_val[4:]+"\""
                                     else:
-                                        string+=self.dicts[toks[index][4:]][val[8:-1]][4:]
-                                elif self.dicts[toks[index][4:]][val[8:-1]][:6]=="STRING":
-                                    string+=self.dicts[toks[index][4:]][val[8:-1]][7:]
+                                        string+=dict_val[4:]
+                                elif dict_val[:3]=="VAR":
+                                    # later check whether the value isastringora num
+                                    if isstr==1:
+                                        # print(self.dicts[toks[index][4:]][val[8:-1]][4:])
+                                        string+="\""+self.symbols[dict_val[4:]][4:]+"\""
+                                    else:
+                                        string+=self.symbols[dict_val[4:]][4:]
+                                elif dict_val[:6]=="STRING":
+                                    string+=dict_val[7:]
                                     isstr=1
                                 # print(index)
                                 while toks[index]!="ENDARR":
@@ -437,11 +450,9 @@ class Interpreter:
                 if index!=prev_index:
                     index-=1
                 break
-        # print(string,index)
         if isstr==1:
             return "STRING:\""+eval(string)+"\"", index-prev_index
         else:
-            print(string, "numroute", index)
             return "NUM:"+str(eval(string)), index-prev_index
 
     def doAssign(self,varName,varVal):
@@ -578,7 +589,7 @@ class Interpreter:
                     if self.symbols[toks[i+1][4:]][:3] == "REQ":
                         print(self.user_request[self.symbols[toks[i+1][4:]][5:-1]])
                     elif self.symbols[toks[i+1][4:]][:4] == "DICT":
-
+                        print(i+1,toks[i+1])
                         val, to_add = self.evalExpr(toks, i + 1)
                         # print(self.dicts)
                         print(val)
@@ -896,6 +907,7 @@ if __name__ == "__main__":
     # upload_data, return_data = interpreter.exec_instruction("$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }")
     # print(upload_data, return_data)
     # print(interpreter.blockchain.blockchain_to_json())
+
 
 
 
