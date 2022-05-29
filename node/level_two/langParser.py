@@ -864,8 +864,4 @@ if __name__ == "__main__":
     upload_data, return_data = interpreter.exec_instruction("$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }")
     print(upload_data, return_data)
     print(interpreter.blockchain.blockchain_to_json())
-
-
-
-# dataarr = open("test.txt", "r").read()
     # print(dataarr)
