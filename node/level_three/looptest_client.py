@@ -33,10 +33,10 @@ if __name__ == '__main__':
     cp = ClientProtocol()
 
     image_data = None
-    with open('IMG_0077.jpg', 'r') as fp:
-        image_data = fp.read()
+    # with open('IMG_0077.jpg', 'r') as fp:
+    #     image_data = fp.read()
 
-    assert(len(image_data))
-    cp.connect('127.0.0.1', 55555)
-    cp.send_image(image_data)
+    # assert(len(image_data))
+    cp.connect('127.0.0.1', 8000)
+    cp.send_image("A parser class which can parse instructions. Will also have the chain tied to it, assigned in the contructor,  to allow blockchain interaction inside the language".encode('utf-8'))
     cp.close()

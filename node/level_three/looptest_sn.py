@@ -6,7 +6,7 @@ import time
 import secrets
 from struct import unpack,pack
 
-from node.level_two.virtualMachine import Interface
+from node.level_two.looptest_vm import Interface
 from node.level_two.wallet import Wallet
 
 
@@ -26,11 +26,7 @@ class SocketNode:
         self.start_network()
         if self.PORT != self.ROOT_PORT:
             try:
-                self.send_data_to_peer(self.ROOT_PORT, {'route': 'sync_node','port': self.PORT})
-                # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                # client_sock.connect(('localhost', self.ROOT_PORT))
-                # client_sock.send(json.dumps({'route': 'sync_node','port': self.PORT}).encode('utf-8'))
-                # client_sock.close()
+                self.send_data_to_port(self.ROOT_PORT, {'route': 'sync_node','port': self.PORT})
             except:
                 print("error syncing")
 
@@ -97,33 +93,20 @@ class SocketNode:
 
 
     def send_data(self, data):
-        # length = pack('>Q', len(data))
         # self.lock.acquire()
         for peer in self.peers:
             if peer != self.PORT:
-                self.send_data_to_peer(peer, data)
-                # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                # try:
-                #     client_sock.connect(('localhost', peer))
-                #     # client_sock.send(length)
-                #     client_sock.send(json.dumps(data).encode('utf-8'))
-                #     client_sock.close()
-                # except:
-                #     print("node "+str(peer)+" failed, changing ")
-                #     if peer == self.ROOT_PORT:
-                #         self.ROOT_PORT = self.PORT
-                #     self.peers.remove(peer)
-                #     self.send_data({'route': 'sync_node_peers','peers': self.peers, 'root_peer': self.ROOT_PORT})
-        # self.lock.release()
+                self.send_data_to_port(peer, data)
 
-    def send_data_to_peer(self, port, data):
-        # length = pack('>Q', len(data))
+    def send_data_to_port(self, port, data):
+        length = pack('>Q', len(data))
         # self.lock.acquire()
         client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         try:
             client_sock.connect(('localhost', port))
-            # client_sock.send(length)
+            # client_sock.sendall(length)
             client_sock.send(json.dumps(data).encode('utf-8'))
+            # client_sock.shutdown(socket.SHUT_WR)
             client_sock.close()
         except:
             print("node "+str(port)+" failed, changing ")
@@ -131,6 +114,7 @@ class SocketNode:
                 self.ROOT_PORT = self.PORT
             self.peers.remove(port)
             self.send_data({'route': 'sync_node_peers','peers': self.peers, 'root_peer': self.ROOT_PORT})
+        # self.lock.release()
 
     def start_server(self):
         self.sock.listen()
@@ -156,12 +140,25 @@ class SocketNode:
         # create a buffer object that receives these buffers and concats them onto the string object
         # print("new client connected ", addr)
         while True:
+
+            # bs = conn.recv(8)
+            # (length,) = unpack('>Q', bs)
+            # bytes_data = b""
             dataJson = conn.recv(4096).decode('utf-8')
+            # while len(bytes_data) < length:
+            #     to_read = length - len(bytes_data)
+            #
+            #     bytes_data += conn.recv(4096 if to_read > 4096 else to_read)
+            # conn.shutdown(socket.SHUT_WR)
+
+            # dataJson = bytes_data.decode('utf-8')
             if not dataJson:
                 # print("client disconnected: "+str(addr[1]))
                 self.connections.remove(conn)
                 break
+
             data = json.loads(dataJson)
+
             # .decode('utf-8')
             # if data["route"]=="test":
             #     print("test " + str(self.PORT))
@@ -294,46 +291,3 @@ if __name__ == '__main__':
     # print(node.peers, node1.peers, node2.peers)
     create_test_chain(node, 2)
     # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
-    # create_test_chain(node2, 2)
-    # create_test_chain(node2, 2)
-
-
-
-
-
-# problem arises when the different nodes are mining blocks at the same time
-
-
-
-
-
-
-

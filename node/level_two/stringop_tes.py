@@ -34,8 +34,8 @@ from node.level_one.blockchain import Blockchain
 #   ways to compare data from user request
 #   ways to interact with data in dictionaries
 
-
 # when inputting something from user request, lex the request,then add it to the dictionaries, so that it could be used for comparisonsand interractions
+# once the request is processed, will be able to interract with it as pleased. when returning a value, or uploading data, it is turned back into nums and strings
 
 class Interpreter:
     def __init__(self, blockchain):
@@ -870,7 +870,7 @@ class Interpreter:
 
     def exec_instruction(self, instruction):
         toks = self.lex(instruction+"§")
-        print(toks)
+        # print(toks)
         self.parse(toks, len(toks))
         upload_data = self.upload_data
         return_data = self.return_data

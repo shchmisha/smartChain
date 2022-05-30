@@ -14,6 +14,10 @@ from node.level_one.block import Block
 # for doc pool:
 # either change documents to just have data
 
+# how to add a database
+    # create a database, named after the chain token and the port (later the host)
+    # when a block gets uploaded
+
 class Blockchain:
     def __init__(self, default_instructions):
         self.default_instructions = default_instructions

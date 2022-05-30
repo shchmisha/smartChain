@@ -38,11 +38,11 @@ class ServerProtocol:
                     connection.shutdown(SHUT_WR)
                     connection.close()
 
-                with open(os.path.join(
-                        self.output_dir, '%06d.jpg' % self.file_num), 'w'
-                ) as fp:
-                    fp.write(data)
-
+                # with open(os.path.join(
+                #         self.output_dir, '%06d.jpg' % self.file_num), 'w'
+                # ) as fp:
+                #     fp.write(data)
+                print(data)
                 self.file_num += 1
         finally:
             self.close()
@@ -55,5 +55,5 @@ class ServerProtocol:
 
 if __name__ == '__main__':
     sp = ServerProtocol()
-    sp.listen('127.0.0.1', 55555)
+    sp.listen('127.0.0.1', 8000)
     sp.handle_images()

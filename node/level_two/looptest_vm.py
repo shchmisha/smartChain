@@ -45,9 +45,11 @@ class Interface:
             try:
                 # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
                 # client_sock.connect(('localhost', self.root_port))
-                # client_sock.send(json.dumps(self.prepare_request({'route': 'sync', 'port': self.port, 'chain_token': self.token})).encode('utf-8'))
+                # chain_data = json.dumps(self.prepare_request({'route': 'sync','port': self.port, 'chain_token': self.token}))
+                # client_sock.send(pack('>Q', len(chain_data)))
+                # client_sock.send(chain_data.encode('utf-8'))
                 # client_sock.close()
-                self.send_data_to_port(self.root_port,self.prepare_request({'route': 'sync', 'port': self.port, 'chain_token': self.token}))
+                self.send_data_to_port(self.root_port, self.prepare_request({'route': 'sync','port': self.port, 'chain_token': self.token}))
             except:
                 print("error syncing chain")
         thread = threading.Thread(target=self.mine_blocks)
@@ -167,14 +169,17 @@ class Interface:
         else:
             # instead of just syncing, try to either sync or a signal is set to node sending the block that the block is wrong
             # the two nodes need to work out who is wrong, either by consensus or by checking each other's chains against each other
-            # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
             peer = self.peers[random.randint(0, len(self.peers)-1)]
             try:
+                # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
                 # client_sock.connect(('localhost', peer))
-                # client_sock.send(json.dumps(self.prepare_request({'chain_token': self.token,'route': 'sync','port': self.port})).encode('utf-8'))
+                # replace_request = json.dumps(self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
+                # length = pack('>Q', len(replace_request))
+                # client_sock.send(replace_request.encode('utf-8'))
+                # client_sock.send(length)
                 # client_sock.close()
-                self.send_data_to_port(peer,self.prepare_request({'chain_token': self.token,'route': 'sync','port': self.port}))
-                print("corrupt block", self.bc.chain[-1].to_json(), blockJson)
+                # print("corrupt block", self.bc.chain[-1].to_json(), blockJson)
+                self.send_data_to_port(peer, self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
             except:
                 if peer == self.root_port:
                     self.root_port = self.port
@@ -186,21 +191,21 @@ class Interface:
     #network function
     def sync(self,newPort):
         # syncing in the chain:
-            # each chain has it's own root port and port to determine who mines next and who to sync wwith
-            # this means that syncing has to be done individually
+        # each chain has it's own root port and port to determine who mines next and who to sync wwith
+        # this means that syncing has to be done individually
         if newPort not in self.peers:
             self.peers.append(newPort)
         # print(newPort)
 
         # calculate the peers that will the node connect to
-        new_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
         #either send the data directly to that port or send it to all ports but only specify the required port
+        # new_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         # new_sock.connect(('localhost', newPort))
         # new_sock.send(json.dumps(self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer})).encode('utf-8'))
         # new_sock.close()
-        self.send_data_to_port(newPort, self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
 
+        self.send_data_to_port(newPort, self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
         self.send_data(self.prepare_request({'chain_token': self.token,'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port}))
         return True
 
@@ -212,23 +217,13 @@ class Interface:
 
     # network function
     def send_data(self, data):
-        # length = pack('>Q', len(data))
+        length = pack('>Q', len(data))
         self.lock.acquire()
         for peer in self.peers:
             if peer != self.port:
-                # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                # try:
-                #     client_sock.connect(('localhost', peer))
-                #     # client_sock.send(length)
-                #     client_sock.send(json.dumps(data).encode('utf-8'))
-                #     client_sock.close()
-                # except:
-                #     if peer == self.root_port:
-                #         self.root_port = self.port
-                #     self.peers.remove(peer)
-                #     self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port}))
-                self.send_data_to_port(peer,data)
-        self.lock.release()
+                self.send_data_to_port(peer, data)
+        # self.lock.release()
+
 
     def send_data_to_port(self, port, data):
         length = pack('>Q', len(data))
@@ -245,6 +240,7 @@ class Interface:
                 self.root_port = self.port
             self.peers.remove(port)
             self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port}))
+        # self.lock.release()
 
     def mine_blocks(self):
         count = 0
@@ -257,8 +253,3 @@ class Interface:
             # print(self.next_peer, self.port, count)
             time.sleep(10.0)
 
-
-
-# do not send private keys, send their signatures over to verify their access
-
-#have central chain (access transactions) store the hash of every document uploaded
