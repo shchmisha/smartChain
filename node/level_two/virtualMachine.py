@@ -213,7 +213,7 @@ class Interface:
     # network function
     def send_data(self, data):
         # length = pack('>Q', len(data))
-        self.lock.acquire()
+        # self.lock.acquire()
         for peer in self.peers:
             if peer != self.port:
                 # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -228,7 +228,7 @@ class Interface:
                 #     self.peers.remove(peer)
                 #     self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port}))
                 self.send_data_to_port(peer,data)
-        self.lock.release()
+        # self.lock.release()
 
     def send_data_to_port(self, port, data):
         length = pack('>Q', len(data))

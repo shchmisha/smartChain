@@ -1,3 +1,5 @@
+import json
+
 from node.level_one.blockchain import Blockchain
 
 # BLOCKCHAIN COMMANDS:
@@ -71,6 +73,7 @@ class Interpreter:
 
         # in order to keep multiple different data types in the lexer cache, have multiple variables for each type and whenever a state is switched, the variable towhich the token is added is switched
         tok = "" # a token is built up from character and reset whenever a valid token is found
+        tokens = []
         state = 0 # if state is 0, every letter we find is a variable/operator, if state is 1, every letter is part of a string
         # a variable like state cna be used to represent entering the state of a function for things like recursion
         varStarted = 0
@@ -83,14 +86,15 @@ class Interpreter:
         for char in data:
             count+=1
             tok+=char
+            # print(tok)
             if tok == " " or tok == ",": # is the , addition good?
                 if var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     # print(var)
                     var = ""
                     varStarted = 0
                 elif expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
                 if state == 0:
                     tok = ""
@@ -98,12 +102,12 @@ class Interpreter:
                     tok = " "
             elif tok == ".":
                 if var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     # print(var)
                     var = ""
                     varStarted = 0
                 elif expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
                 if state == 0:
                     tok = ""
@@ -111,31 +115,31 @@ class Interpreter:
                     tok = "."
             elif tok == "\n" or char == "§" or tok == ";": #########
                 if expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
                 elif var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     # print(var) problem found here
                     var = ""
                     varStarted = 0
                 if tok == ";":
-                    self.tokens.append("EOI")
-                elif tok =="\n" and self.tokens[-1]!="NL":
-                    self.tokens.append("NL")
+                    tokens.append("EOI")
+                elif tok =="\n" and tokens[-1]!="NL":
+                    tokens.append("NL")
                 tok = ""
             elif tok == "=" and state == 0:
                 if expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
                 if var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     # print(var) and here
                     var = ""
                     varStarted = 0
-                if self.tokens[-1] == "EQUALS":
-                    self.tokens[-1] = "EQEQ"
+                if len(tokens) > 0 and tokens[-1] == "EQUALS":
+                    tokens[-1] = "EQEQ"
                 else:
-                    self.tokens.append("EQUALS")
+                    tokens.append("EQUALS")
                 tok = ""
             elif tok == "$" and state == 0:
                 varStarted = 1
@@ -144,120 +148,122 @@ class Interpreter:
             elif varStarted == 1:
                 if tok == "<":
                     if var!="":
-                        self.tokens.append("VAR:"+var)
+                        tokens.append("VAR:"+var)
                         var = ""
                         varStarted = 0
                 elif tok == ")" or tok == "(":
                     if var!="":
-                        self.tokens.append("VAR:"+var)
+                        tokens.append("VAR:"+var)
                         var = ""
                         varStarted = 0
                     elif expr!="":
-                        self.tokens.append("NUM:"+expr)
+                        tokens.append("NUM:"+expr)
                         expr=""
-                    self.tokens.append("OP:"+tok)
+                    tokens.append("OP:"+tok)
                     tok = ""
 
                 elif tok == "[" or tok == "]":
                     if var!="":
-                        self.tokens.append("VAR:"+var)
+                        tokens.append("VAR:"+var)
                         var = ""
                         varStarted = 0
-                    self.tokens.append("ARR")
+                    tokens.append("ARR")
                     tok=""
                 else:
                     var+=tok
                     tok = ""
             elif tok == "FUNC" or tok == "func":
-                self.tokens.append("FUNC")
+                tokens.append("FUNC")
                 tok = ""
             elif tok == "ENDFUNC" or tok == "endfunc":
-                self.tokens.append("FUNC")
+                tokens.append("FUNC")
                 tok = ""
             elif tok == "PRINT" or tok == "print":
-                self.tokens.append("PRINT")
+                tokens.append("PRINT")
                 tok = "" # reset the token each time a valid token has been found
             elif tok == "INPUT" or tok == "input":
-                self.tokens.append("INPUT")
+                tokens.append("INPUT")
                 tok = ""
             elif tok == ":":
                 ############# the semi colon needs to be seperate from var
                 # print("reached : ")
                 if expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
                 elif var!="" and varStarted==1:
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     var = ""
                     varStarted = 0
-                self.tokens.append(":")
+                tokens.append(":")
                 tok = ""
             elif tok == "GET" or tok == "get":
-                self.tokens.append("GET")
+                tokens.append("GET")
                 tok = ""
             elif tok == "UPLOAD" or tok == "upload":
-                self.tokens.append("UPLOAD")
+                tokens.append("UPLOAD")
                 tok = ""
             elif tok == "IF" or tok == "if":
-                self.tokens.append("IF")
+                tokens.append("IF")
                 tok = ""
             elif tok == "ENDIF" or tok == "endif":
-                self.tokens.append("ENDIF")
+                tokens.append("ENDIF")
                 tok = ""
             elif tok == "WHILE" or tok == "while":
-                self.tokens.append("WHILE")
+                tokens.append("WHILE")
                 tok = ""
             elif tok == "FOREACH" or tok == "foreach":
-                self.tokens.append("FOREACH")
+                tokens.append("FOREACH")
                 tok = ""
             elif tok == "RETURN" or tok == "return":
-                self.tokens.append("RETURN")
+                tokens.append("RETURN")
                 tok = ""
             elif tok == "UPLOAD" or tok == "upload":
-                self.tokens.append("UPLOAD")
+                tokens.append("UPLOAD")
                 tok = ""
             elif tok == "GET" or tok == "get":
-                self.tokens.append("GET")
+                tokens.append("GET")
                 tok = ""
             elif tok == "BLOCKCHAIN" or tok == "blockchain":
-                self.tokens.append("BLOCKCHAIN")
+                tokens.append("BLOCKCHAIN")
                 tok = ""
             elif tok == "{":
-                if self.tokens[-1] == "EQUALS":
-                    self.tokens.append("DICT")
+                if len(tokens)==0:
+                    tokens.append("DICT")
+                elif tokens[-1] == "EQUALS":
+                    tokens.append("DICT")
                 else:
-                    self.tokens.append(":")
+                    tokens.append(":")
                 tok = ""
             elif tok == "}":
                 if expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
                 elif var!="" and varStarted==1:
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     var = ""
                     varStarted = 0
-                i = len(self.tokens)-1
+                i = len(tokens)-1
                 num_of_stmt = 0
                 while i>=0:
                     # check for both starts and finishes
-                    if self.tokens[i]=="ENDIF" or self.tokens[i]=="ENDWHILE" or self.tokens[i]=="ENDFUNC" or self.tokens[i]=="ENDFOREACH" or self.tokens[i]=="ENDDICT":
+                    if tokens[i]=="ENDIF" or tokens[i]=="ENDWHILE" or tokens[i]=="ENDFUNC" or tokens[i]=="ENDFOREACH" or tokens[i]=="ENDDICT":
                         num_of_stmt+=1
-                    elif self.tokens[i]=="IF" or self.tokens[i]=="WHILE" or self.tokens[i]=="FUNC" or self.tokens[i]=="FOREACH" or self.tokens[i]=="DICT":
+                    elif tokens[i]=="IF" or tokens[i]=="WHILE" or tokens[i]=="FUNC" or tokens[i]=="FOREACH" or tokens[i]=="DICT":
                         if num_of_stmt ==0:
-                            if self.tokens[i]=="IF":
-                                self.tokens.append("ENDIF")
+                            if tokens[i]=="IF":
+                                tokens.append("ENDIF")
                                 break
-                            elif self.tokens[i]=="WHILE":
-                                self.tokens.append("ENDWHILE")
+                            elif tokens[i]=="WHILE":
+                                tokens.append("ENDWHILE")
                                 break
-                            elif self.tokens[i]=="FUNC":
-                                self.tokens.append("ENDFUNC")
+                            elif tokens[i]=="FUNC":
+                                tokens.append("ENDFUNC")
                                 break
-                            elif self.tokens[i]=="FOREACH":
-                                self.tokens.append("ENDFOREACH")
+                            elif tokens[i]=="FOREACH":
+                                tokens.append("ENDFOREACH")
                                 break
-                            elif self.tokens[i]=="DICT":
-                                self.tokens.append("ENDDICT")
+                            elif tokens[i]=="DICT":
+                                tokens.append("ENDDICT")
                                 break
                         else:
                             num_of_stmt-=1
@@ -266,34 +272,34 @@ class Interpreter:
                 tok = ""
             elif tok=="[":
                 if var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     # print(var)
                     var = ""
                     varStarted = 0
                 elif expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
-                self.tokens.append("ARR")
+                tokens.append("ARR")
                 tok=""
             elif tok=="append" or tok == "APPEND":
-                self.tokens.append("APPEND")
+                tokens.append("APPEND")
                 tok=""
             elif tok=="pop" or tok == "POP":
-                self.tokens.append("POP")
+                tokens.append("POP")
                 tok=""
             elif tok == "]":
                 if var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     # print(var)
                     var = ""
                     varStarted = 0
                 elif expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
-                self.tokens.append("ENDARR")
+                tokens.append("ENDARR")
                 tok=""
             elif tok == "ENDWHILE" or tok == "endwhile":
-                self.tokens.append("ENDWHILE")
+                tokens.append("ENDWHILE")
                 tok = ""
             elif tok == "0" or tok == "1" or tok == "2" or tok == "3" or tok == "4" or tok == "5" or tok == "6" or tok == "7" or tok == "8" or tok == "9":
                 if varStarted == 1:
@@ -305,22 +311,22 @@ class Interpreter:
                 tok=""
             elif tok == "+" or tok == "-" or tok == "*" or tok == "/" or tok == "(" or tok == ")" or tok == "%":
                 if expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
-                if self.tokens[-1]=="OP:+" and tok=="+":
-                    self.tokens[-1] = "PLPL"
+                if tokens[-1]=="OP:+" and tok=="+":
+                    tokens[-1] = "PLPL"
                 else:
-                    self.tokens.append("OP:"+tok) #????????
+                    tokens.append("OP:"+tok) #????????
                 tok=""
             elif tok == ">" or tok == "<":
                 if var!="":
-                    self.tokens.append("VAR:"+var)
+                    tokens.append("VAR:"+var)
                     var = ""
                     varStarted = 0
                 elif expr!="":
-                    self.tokens.append("NUM:"+expr)
+                    tokens.append("NUM:"+expr)
                     expr=""
-                self.tokens.append("COMP:"+tok)
+                tokens.append("COMP:"+tok)
                 tok=""
             elif tok == "\t":
                 # maybe do something here
@@ -330,7 +336,7 @@ class Interpreter:
                     # tok = ""
                     state = 1
                 elif state == 1: # if a double quote sign is found when the state is 1, the state is switched to 0 and the string is returned
-                    self.tokens.append("STRING:"+string+"\"")
+                    tokens.append("STRING:"+string+"\"")
                     string = ""
                     state = 0
                     tok = ""
@@ -338,7 +344,7 @@ class Interpreter:
                 string += tok
                 tok = ""
             # print(tok)
-        return self.tokens
+        return tokens
 
     def evalExpr(self, toks, index):
         # have an eval function for strings adn arrays as well
@@ -348,7 +354,7 @@ class Interpreter:
         isstr = 0
         count=0
         while (index<len(toks)):
-
+            #
             if toks[index]=="NL":
                 break
             # if toks[index]==":":
@@ -369,11 +375,23 @@ class Interpreter:
                         # print("toks[index][0:3] == VAR")
                         varval = self.symbols[toks[index][4:]]
                         # add support for strings
+
                         if varval[0:3] == "NUM":
+
                             if isstr==1:
                                 string+="\""+varval[4:]+"\""
                             else:
                                 string+=varval[4:]
+                        elif varval[0:3] == "VAR":
+                            varval_val = self.symbols[varval[4:]]
+                            if varval_val[0:3] == "NUM":
+                                if isstr==1:
+                                    string+="\""+varval_val[4:]+"\""
+                                else:
+                                    string+=varval_val[4:]
+                            elif varval_val[0:6] == "STRING":
+                                string+=varval_val[7:]
+                                isstr=1
                         elif varval[0:6] == "STRING":
                             string+=varval[7:]
                             isstr=1
@@ -450,10 +468,117 @@ class Interpreter:
                 if index!=prev_index:
                     index-=1
                 break
+            # print(toks[index], string, index, "evalexpr")
+
         if isstr==1:
             return "STRING:\""+eval(string)+"\"", index-prev_index
         else:
             return "NUM:"+str(eval(string)), index-prev_index
+
+    def evalComp(self, toks, index):
+        # have an eval function for strings adn arrays as well
+        prev_index = index
+        string = ""
+        last_type = None
+        count=0
+        while (index<len(toks)):
+
+            if toks[index]=="NL":
+                break
+            # if toks[index]==":":
+            #     break
+            if toks[index] == "EQEQ" or toks[index][0:2] == "OP" or toks[index][0:4] == "COMP":
+                if last_type == "VAR" or last_type == "NUM" or last_type == "STRING" or last_type == None:
+                    if toks[index][0:2] == "OP":
+                        string+=toks[index][3:]
+                        last_type = toks[index][0:2]
+                        index+=1
+                    elif toks[index] == "EQEQ":
+                        string+="=="
+                        last_type = toks[index]
+                        index+=1
+                    elif toks[index][0:4] == "COMP":
+                        string+=toks[index][5:]
+                        last_type = toks[index][0:4]
+                        index+=1
+                else:
+                    if index!=prev_index:
+                        index-=1
+                    break
+            elif toks[index][0:3] == "VAR" or toks[index][0:3] == "NUM" or toks[index][0:6]=="STRING":
+                if last_type == "OP" or last_type == "COMP" or last_type == "EQEQ" or last_type == None:
+                    # print(last_type)
+                    if toks[index][0:3] == "VAR":
+                        # print("toks[index][0:3] == VAR")
+                        varval = self.symbols[toks[index][4:]]
+                        # add support for strings
+                        if varval[0:3] == "NUM":
+                            string+=varval[4:]
+                        elif varval[0:6] == "STRING":
+                            string+=varval[7:]
+                        elif varval[0:3] == "ARR":
+                            if toks[index][0:3]+" "+toks[index+1] == "VAR ARR":
+                                # eval the expression inside by providing the toks and the index after the ARR token
+
+                                val, add_to = self.evalExpr(toks, index+2)
+                                # print(val)
+                                # while toks[index]!="ENDARR":
+                                string+=str(self.arrays[toks[index][4:]][int(val[4:])][4:])
+
+                                while toks[index]!="ENDARR":
+                                    index+=1
+                            elif toks[index][0:3]+" "+toks[index+1]=="VAR POP":
+                                string+=str(self.arrays[toks[index][4:]].pop()[4:])
+                        elif varval[0:4]=="FUNC":
+
+                            self.exec_func(toks, index)
+                            string+=self.return_val
+                        #     addmore indexes
+
+                        elif varval[0:4] == "DICT":
+
+                            if varval[0:4]+" "+toks[index+1] == "DICT ARR":
+                                # eval the expression inside by providing the toks and the index after the ARR token
+
+                                val, add_to = self.evalExpr(toks, index + 2)
+                                dict_val = self.dicts[toks[index][4:]][val[8:-1]]
+                                if dict_val[:3]=="NUM":
+
+                                    string+=dict_val[4:]
+                                elif dict_val[:3]=="VAR":
+                                    # later check whether the value isastringora num
+                                    string+=self.symbols[dict_val[4:]][4:]
+                                elif dict_val[:6]=="STRING":
+                                    string+=dict_val[7:]
+                                    isstr=1
+                                # print(index)
+                                while toks[index]!="ENDARR":
+                                    index+=1
+                                # print(index)
+                        last_type = "VAR"
+                        index+=1
+                    elif toks[index][0:3] == "NUM":
+                        string+= toks[index][4:]
+                        last_type = toks[index][0:3]
+                        index+=1
+                    elif toks[index][0:6] == "STRING":
+                        string+=toks[index][7:]
+                        last_type = toks[index][0:6]
+                        isstr=1
+                        index+=1
+                    else:
+                        if index!=prev_index:
+                            index-=1
+                        break
+                else:
+                    if index!=prev_index:
+                        index-=1
+                    break
+            else:
+                if index!=prev_index:
+                    index-=1
+                break
+        return eval(string), index-prev_index
 
     def doAssign(self,varName,varVal):
         # check whether the value is a number or a variable or an expression
@@ -493,7 +618,10 @@ class Interpreter:
         if varName[4:] in self.symbols:
             if self.symbols[varName[4:]][:3]=="ARR":
                 return self.arrays[self.symbols[varName[4:]][4:]]
-            return self.symbols[varName[4:]]
+            elif self.symbols[varName[4:]][:4]=="DICT":
+                return self.dicts[self.symbols[varName[4:]][5:]]
+            else:
+                return self.symbols[varName[4:]]
         else:
             print("Variable does not exist")
             return None
@@ -521,7 +649,7 @@ class Interpreter:
         # STRING : NUM/STRING/VAR/ARR/DICT/FUNC
 
         while toks[new_index]!="ENDDICT":
-            # print(toks[new_index])
+
             if toks[new_index] == "DICT":
                 new_index+=1
             elif toks[new_index][:3]=="VAR":
@@ -535,21 +663,282 @@ class Interpreter:
                 # key_string, to_add = self.evalString(toks,index)
                 # print(key_string)
                 # print(to_add)
+                print(toks[new_index][8:-1])
+
                 new_dict[toks[new_index][8:-1]] = toks[new_index+2]
                 # new_dict[key_string[8:-1]] = toks[index+to_add+2]
                 # print(new_dict)
                 new_index+=3
+
         # print(toks[new_index])
 
         return new_dict, new_index-index
+
+    def define_func(self, toks, i):
+        self.doAssign(toks[i+1], "FUNC:"+toks[i+1][4:])
+        func_desc = [] # [start, end, arg1, ...]
+        # get start of function
+        startfunc_index = i
+        while toks[startfunc_index]!=":":
+            # print("startfunc")
+            startfunc_index+=1
+        func_desc.append(startfunc_index)
+        # get end of function
+        endfunc_index = startfunc_index
+        while toks[endfunc_index]!="ENDFUNC":
+            # print("endfunc")
+            endfunc_index+=1
+        func_desc.append(endfunc_index)
+
+        args_index = i+2
+        while toks[args_index]!=":":
+            # print("arg")
+            if toks[args_index][:3]=="VAR":
+                func_desc.append(toks[args_index][4:])
+                self.doAssign(toks[args_index], "NONE")
+            args_index +=1
+
+        self.functions[toks[i+1][4:]] = func_desc
+        # print(endfunc_index)
+        return endfunc_index
+
+    # def get_comp(self, toks, i):
+    #     new_index = i
+    #     condt1, to_add = self.evalExpr(toks, i+1)
+    #     condt2, to_add = self.evalExpr(toks, i+2+to_add)
+    #     if condt1[0:3]=="NUM" and condt2[0:3]=="NUM":
+    #         return condt1[4:]+toks
+    #     return
+
+    def parse_test(self, toks, toks_end_index, toks_start_index=0):
+        i = toks_start_index
+        to = toks_end_index
+        # INSTEAD OF HAVING SET PATTERNS,ONLY REACT TO CERTAIN KEYWORDS
+        # ONCE A KEYWORD IS REACHED, THE PARSER SEEKS THE PATTERN
+        # THIS ALLOWS FOR VALUES TO BE FORMED FROM EXPRESSIONS
+        while (i<to):
+            # print(toks[i])
+
+            if toks[i]=="ENDIF" or toks[i]=="NL" or toks[i]=="ENDARR" or toks[i]=="ENDFUNC" or toks[i]=="ENDDICT" or toks[i]=="ENDWHILE": # tokes representing nl can be used tonotdisruptthe flow of the program, as well as disrupting the flow of some evaluations
+
+                i+=1
+            elif toks[i] == "RETURN":
+                val, to_add = self.evalExpr(toks, i+1)
+                self.return_val = val
+                # one way to break
+                i=to
+            elif toks[i][0:3] == "VAR":
+
+                if toks[i+1]=="OP:(" and self.symbols[toks[i][4:]][:4]=="FUNC":
+                    print("func call")
+                    # print(i)
+                    i+=self.exec_func(toks, i)
+                    # print(i)
+                elif toks[i+1]=="POP":
+                    arr = self.getVariable(toks[i])
+                    arr.pop()
+                    i+=2
+                elif toks[i+1] == "EQUALS":
+                    # how to do this
+                    # use the eval exprfunction to assign nums and strings
+                    #when assigning arrays and dicts, use different methods
+
+                    if toks[i+2]=="ARR":
+                        val, to_add = self.getArr(toks, i+3)
+                        self.arrays[toks[i][4:]]=val
+
+                        self.doAssign(toks[i], "ARR:"+toks[i][4:])
+                    elif toks[i+2]=="DICT":
+                        val, to_add = self.getDict(toks, i+3)
+                        self.dicts[toks[i][4:]]=val
+
+                        self.doAssign(toks[i], "DICT:"+toks[i][4:])
+                    elif toks[i+2][0:3]=="VAR":
+                        varval = self.symbols[toks[i+2][4:]]
+                        to_add=0
+
+                        if varval[:3] == "ARR":
+                            if toks[i+2]=="ARR":
+                                val, to_add = self.evalExpr(toks, i + 2)
+                                self.doAssign(toks[i], val)
+                            else:
+                                # check if the value stored is an array
+                                arr = self.arrays[toks[i+2][4:]]
+                                self.arrays[toks[i][4:]]=arr
+                                self.doAssign(toks[i], "ARR:"+toks[i][4:])
+                        elif varval[:4] == "DICT":
+                            if toks[i+2]=="ARR":
+                                val, to_add = self.evalExpr(toks, i + 2)
+                                self.doAssign(toks[i], val)
+                            else:
+                                # check if the value stored is an array
+                                dict = self.dicts[toks[i+2][4:]]
+                                self.dicts[toks[i][4:]]=dict
+                                self.doAssign(toks[i], "DICT:"+toks[i][4:])
+                        elif varval[:4] == "FUNC":
+                            # execute the function, set the value as the returned value of that function and then
+                            end_of_call_index = self.exec_func(toks,i+2)
+                            self.doAssign(toks[i], self.return_val)
+                            to_add+=(end_of_call_index-2)
+                        else:
+                            val, to_add = self.evalExpr(toks, i + 2)
+
+                            self.doAssign(toks[i], val)
+                            # print(toks[i+to_add+3])
+
+
+                    else:
+                        val, to_add = self.evalExpr(toks, i + 2)
+                        self.doAssign(toks[i], toks[i+2])
+
+                        # when an array gets assigned to a var, the array is stored in a dictionary
+                        # the value stored in the symbols is the ARR header with the name of the variable
+                        # getting the array from a variable is the matter of checking that the ARR header is present and then using what comes after as the key for the arrays dict
+                    i+=to_add+3
+                    # print(toks[i])
+                elif toks[i+1]=="APPEND":
+                    arr = self.arrays[toks[i][4:]]
+                    append_val, to_add = self.evalExpr(toks,i+2)
+                    arr.append(append_val)
+                    i+=3+to_add
+            elif toks[i]=="FUNC":
+                i = self.define_func(toks,i)
+            elif toks[i] == "INPUT":
+                #  INPUT "REQUEST_VAR_KEY" VAR
+                #  inside VAR, stores the key for that value inside the user input
+                #  create the blockchain api, where the values of these vars can be uploaded
+                ############
+                # print("input")
+                key_string,to_add = self.evalExpr(toks, i+1)
+
+                req_val = self.user_request[key_string[8:-1]]
+
+                req_val_data = self.lex(json.dumps(req_val))
+                if "DICT" in req_val_data:
+                    req_val_dict, to_add = self.getDict(req_val_data, 0)
+                    self.dicts[toks[i+1+to_add][4:]]=req_val_dict
+                    self.symbols[toks[i+1+to_add][4:]]="DICT:"+toks[i+1+to_add][4:]
+                else:
+                    self.symbols[toks[i+2+to_add][4:]] = req_val_data[0]
+                    to_add=1
+                # print(req_val_data)
+                # print(toks[i+to_add+2])
+
+                i+=to_add+2
+            elif toks[i] == "UPLOAD":
+                # how will uploading work:
+                # either literally add whatever is stored in the document to the blockchain
+                # or
+                # save everything to one upload_data object and save it to the blockchain
+                varval = self.symbols[toks[i+2][4:]]
+                if varval[:4] =="DICT":
+                    self.upload_data[toks[i+1][8:-1]] = self.dicts[varval[5:]]
+                elif varval[:3] =="ARR":
+                    self.upload_data[toks[i+1][8:-1]] = self.arrays[varval[4:]]
+                else:
+                    self.upload_data[toks[i+1][8:-1]] = varval
+                i+=3
+            elif toks[i] == "IF":
+                # if var1 > var2:
+                # if condition is correct, + 5
+                # else, find the position of the end of the if statement and then adds that many spaces
+                # print(getVariable(toks[i+1])[4:], toks[i+3][4:])
+                comparison, to_add = self.evalComp(toks, i+1)
+                if comparison:
+                    i+=to_add+2
+                else:
+                    while toks[i] != "ENDIF":
+                        i+=1
+            elif toks[i]=="FOREACH":
+                if toks[i+1]=="BLOCKCHAIN":
+                    endforeach_index = i
+                    while toks[endforeach_index]!="ENDFOREACH":
+                        endforeach_index+=1
+
+                    for block in self.blockchain.chain:
+                        for data in block.data:
+                            self.symbols[toks[i+2][4:]] = "BCD:"+toks[i+2][4:]
+                            self.blockchain_data[toks[i+2][4:]] = data
+                            self.parse_test(toks, endforeach_index, i+4)
+                    i = endforeach_index+1
+                else:
+
+                    endforeach_index = i
+                    while toks[endforeach_index]!="ENDFOREACH":
+                        endforeach_index+=1
+
+                    arr = self.getVariable(toks[i+1])
+                    for el_i in range(len(arr)):
+                        self.doAssign(toks[i+2], arr[el_i])
+                        self.parse_test(toks, endforeach_index, i+4)
+                        arr[el_i] = self.symbols[toks[i+2][4:]]
+                    i = endforeach_index+1
+            elif toks[i] == "WHILE":
+
+                endwhile_index = i
+                while toks[endwhile_index]!="ENDWHILE":
+                    # need to loop to after the endwhile
+                    endwhile_index+=1
+
+                comparison, to_add = self.evalComp(toks, i+1)
+
+                while comparison:
+                    # print(toks[i+to_add+3])
+                    self.parse_test(toks, endwhile_index, i+to_add+3)
+                    comparison, to_add = self.evalComp(toks, i+1)
+                i = endwhile_index+1
+            elif toks[i] == "BLOCKCHAIN":
+                if toks[i+1]=="GET":
+                    # how will getting docs work:
+                    # gets the data stored at that index and assigns it to the variable provided
+                    # the actual data will be stored in the blockchain_data array
+                    fetched_data = None
+                    data_index, to_add = self.evalExpr(toks, i+3)
+                    di = int(data_index[4:])
+                    if di == -1:
+                        fetched_data = self.blockchain.chain[-1].data[-1]
+                    else:
+                        index = 0
+
+                        while index<di:
+                            for block in self.blockchain.chain:
+                                for data in block.data:
+                                    if index == data_index-1:
+                                        fetched_data = data
+                                    index+=1
+
+
+                    self.symbols[toks[i+1][4:]] = "BCD:"+toks[i+1][4:]
+                    self.blockchain_data[toks[i+1][4:]] = fetched_data
+
+                    i+=4+to_add
+                elif toks[i+1]=="RETURN":
+                    string, to_add = self.evalExpr(toks, i + 3)
+                    if self.symbols[toks[i+2][4:]][:3] == "ARR":
+                        self.return_data[string[8:-1]] = self.arrays[toks[i+2][4:]]
+                    elif self.symbols[toks[i+2][4:]][:3] == "DICT":
+                        self.return_data[string[7:]] = self.dicts[toks[i+2][4:]]
+                    if self.symbols[toks[i+2][4:]][:3] == "BCD":
+                        self.return_data[string[8:-1]] = self.blockchain_data[toks[i+2][4:]]
+                    else:
+                        self.return_data[string[8:-1]] = self.symbols[toks[i+2][4:]]
+
+                    i+=4+to_add
+                else:
+                    break
+
+
+
+
 
 
 
     def parse(self, toks, toks_end_index, toks_start_index=0):
         i = toks_start_index
         to = toks_end_index
-        # whnever there is a value encountered, have a function that gets the value of the expression no matter the type of the first value
-        # the value that returns can either be assigned, compared or looped through
+        # INSTEAD OF HAVING SET PATTERNS,ONLY REACT TO CERTAIN KEYWORDS
+        # ONCE A KEYWORD IS REACHED, THE PARSER SEEKS THE PATTERN
+        # THIS ALLOWS FOR VALUES TO BE FORMED FROM EXPRESSIONS
 
         # print(i)
         # print(to)
@@ -662,6 +1051,36 @@ class Interpreter:
                 i = endfunc_index
                 # print(functions)
                 # a func is declared with the variable name to which it willbe tied. calling functions willbe different form calling variables
+            elif toks[i]+" "+toks[i+1][0:6]+ " "+ toks[i+2][0:3] == "INPUT STRING VAR":
+                #  INPUT "REQUEST_VAR_KEY" VAR
+                #  inside VAR, stores the key for that value inside the user input
+                #  create the blockchain api, where the values of these vars can be uploaded
+                ############
+
+                req_val = self.user_request[toks[i+1][8:-1]]
+                req_val_data = self.lex(json.dumps(req_val))
+                req_val_dict, to_add = self.getDict(req_val_data, 0)
+                print(req_val_dict)
+                self.dicts[toks[i+2][4:]]=req_val_dict
+                self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
+                # print(self.user_request)
+                # print(toks[i+2])
+
+                # self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
+                i+=3
+                # self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
+                # i+=3
+            elif toks[i]+" "+toks[i+1][:6]+ " "+ toks[i+2][0:3] == "UPLOAD STRING VAR":
+                # how will uploading work:
+                # either literally add whatever is stored in the document to the blockchain
+                # or
+                # save everything to one upload_data object and save it to the blockchain
+                varval = self.symbols[toks[i+2][4:]]
+                if varval[:3] =="REQ":
+                    self.upload_data[toks[i+1][8:-1]] = self.user_request[varval[5:-1]]
+                else:
+                    self.upload_data[toks[i+1][8:-1]] = varval
+                i+=3
             elif toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:6] == "VAR EQUALS STRING" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:3] == "VAR EQUALS NUM" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:3] == "VAR EQUALS VAR" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2] == "VAR EQUALS ARR" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2] == "VAR EQUALS DICT":
                 # whenever values are assigned to variables, the type recognisers have to be in place inside the symbols dict
                 # variables can hold either numbers, strings, arrays and functions
@@ -732,24 +1151,6 @@ class Interpreter:
                     val, to_add = self.evalExpr(toks, i+2)
                     arr.append(str(val))
                 i+=3+to_add
-            elif toks[i]+" "+toks[i+1][0:6]+ " "+ toks[i+2][0:3] == "INPUT STRING VAR":
-                #  INPUT "REQUEST_VAR_KEY" VAR
-                #  inside VAR, stores the key for that value inside the user input
-                #  create the blockchain api, where the values of these vars can be uploaded
-                ############
-                self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
-                i+=3
-            elif toks[i]+" "+toks[i+1][:6]+ " "+ toks[i+2][0:3] == "UPLOAD STRING VAR":
-                # how will uploading work:
-                # either literally add whatever is stored in the document to the blockchain
-                # or
-                # save everything to one upload_data object and save it to the blockchain
-                varval = self.symbols[toks[i+2][4:]]
-                if varval[:3] =="REQ":
-                    self.upload_data[toks[i+1][8:-1]] = self.user_request[varval[5:-1]]
-                else:
-                    self.upload_data[toks[i+1][8:-1]] = varval
-                i+=3
             elif toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2]+ " "+ toks[i+3][0:3] == "BLOCKCHAIN VAR GET NUM" or toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:3] == "BLOCKCHAIN VAR GET VAR" or toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:2] == "BLOCKCHAIN VAR GET OP":
                 # how will getting docs work:
                 # gets the data stored at that index and assigns it to the variable provided
@@ -868,9 +1269,18 @@ class Interpreter:
         toks = self.lex(data)
         self.parse(toks, len(toks))
 
+    def exec_instruction_test(self, instruction):
+        toks = self.lex(instruction+"§")
+        print(toks)
+        self.parse_test(toks, len(toks))
+        upload_data = self.upload_data
+        return_data = self.return_data
+        self.clear()
+        return upload_data, return_data
+
     def exec_instruction(self, instruction):
         toks = self.lex(instruction+"§")
-        # print(toks)
+        print(toks)
         self.parse(toks, len(toks))
         upload_data = self.upload_data
         return_data = self.return_data
@@ -894,21 +1304,77 @@ if __name__ == "__main__":
     interpreter.blockchain.documentMap = []
     interpreter.blockchain.documentMap.append("data3")
     interpreter.user_request = dict({"key":"key", "data": {"content1": "content", "content2": "content"}, "signature": "signature"})
-    test_instruction = "$var = 5 $var1 = $var +5 while $var < $var1 { $var = $var + 1 print $var } $var3 = [ 1, 2, 4 ] $var3 append $var $var3 append 4 print $var3 $var3 pop print $var3[1 + 1] + 1 func $func($arg1) { print $var3 foreach $var3 $element { $element = $element + $arg1 } print $var3 } func $func2($arg3) { $func($arg3) } $func($var) input \"key\" $key_var input \"data\" $data_var print $key_var print $data_var $dict_var = {\"dict_val\" : $var } print $dict_var [\"dict_val\"]"
+    test_instruction = "$var = 5 $var1 = $var +5 while $var < $var1 { $var = $var + 1 } $var3 = [ 1, 2, 4 ] $var3 append $var $var3 append 4 $var3 pop func $func($arg1) { foreach $var3 $element { $element = $element + $arg1 } } func $func2($arg3) { $func($arg3) } $func($var) input \"key\" $key_var input \"data\" $data_var $dict_var = {\"dict_val\" : $var, } "
     input_upload_test = "input \"data\" $var upload \"doc_data\" $var blockchain return $var \"return val\" + \"1\""
-    upload_data, return_data = interpreter.exec_instruction(test_instruction)
+    dict_test = "$dict_var = {\"dict_val\" : 4 } print $dict_var [\"dict_val\"]"
+    upload_data, return_data = interpreter.exec_instruction(input_upload_test)
+    upload_data, return_data = interpreter.exec_instruction_test(test_instruction)
     # upload_data, return_data = interpreter.exec_instruction("$var = {\"kay_val\": 3, \"kay_val1\": 3} print $var[\"kay_val\"]")
     # print(upload_data, return_data)
     # interpreter.blockchain.documentMap.append(upload_data)
-
     # interpreter.blockchain.addBlock()
     # interpreter.blockchain.documentMap = []
 
     # upload_data, return_data = interpreter.exec_instruction("$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }")
     # print(upload_data, return_data)
     # print(interpreter.blockchain.blockchain_to_json())
-
+    print(eval("\"num\"==\"num\""))
 
 
 
 # dataarr = open("test.txt", "r").read()
+
+
+
+# if toks[i+1][0:3]=="NUM":
+#                     if toks[i+3][0:3]=="NUM":
+#                         if eval(toks[i+1][4:]+" "+toks[i+2][5:]+" "+toks[i+3][4:]):
+#                             i+=5
+#                         else:
+#                             while toks[i] != "ENDIF":
+#                                 i+=1
+#                     elif toks[i+3][0:3]=="VAR":
+#                         varval = self.symbols[toks[i+3][4:]]
+#                         if eval(toks[i+1][4:]+" "+toks[i+2][5:]+" "+varval[4:]):
+#                             i+=5
+#                         else:
+#                             while toks[i] != "ENDIF":
+#                                 i+=1
+#                 elif toks[i+1][0:3]=="VAR":
+#                     varval = self.symbols[toks[i+1][4:]]
+#                     if toks[i+3][0:3]=="NUM":
+#                         if eval(varval[4:]+" "+toks[i+2][5:]+" "+toks[i+3][4:]):
+#                             i+=5
+#                         else:
+#                             while toks[i] != "ENDIF":
+#                                 i+=1
+#                     elif toks[i+2][0:3]=="VAR":
+#                         varval2 = self.symbols[toks[i+3][4:]]
+#                         if varval2[0:3]=="NUM":
+#                             if eval(varval[4:]+" "+toks[i+2][5:]+" "+varval2[4:]):
+#                                 i+=5
+#                             else:
+#                                 while toks[i] != "ENDIF":
+#                                     i+=1
+#                         elif varval2[0:3]=="ARR":
+#                             pass
+#                         elif varval2[0:4]=="DICT":
+#                             pass
+#                         elif varval2[0:6]=="STRING":
+#                             if eval(varval[7:]+" "+toks[i+2][5:]+" "+varval2[7:]):
+#                                 i+=5
+#                             else:
+#                                 while toks[i] != "ENDIF":
+#                                     i+=1
+#                     elif toks[i+3][0:6]=="STRING":
+#                         if eval(varval[7:]+" "+toks[i+2][5:]+" "+toks[i+3][7:]):
+#                             i+=5
+#                         else:
+#                             while toks[i] != "ENDIF":
+#                                 i+=1
+#                 elif toks[i+1][0:6]=="STRING":
+#                     if eval(toks[i+1][7:]+" "+toks[i+2][5:]+" "+toks[i+3][7:]):
+#                         i+=5
+#                     else:
+#                         while toks[i] != "ENDIF":
+#                             i+=1

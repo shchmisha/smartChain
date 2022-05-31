@@ -4,7 +4,7 @@ import socket
 import threading
 import time
 import secrets
-from struct import unpack,pack
+from struct import pack, unpack
 
 from node.level_two.looptest_vm import Interface
 from node.level_two.wallet import Wallet
@@ -257,7 +257,7 @@ def upload_test_data(node, chain_token):
     while True:
         time.sleep(30)
         print("testing data upload")
-        node.chains[chain_token].interact({'route': 'upload_data', 'data': content,'chain_token': chain_token})
+        node.chains[chain_token].interact({'route': 'upload_data', 'data': {'data_token': content},'chain_token': chain_token})
         content = str(secrets.token_hex(16))
 
 def get_test_data(node, chain_token):

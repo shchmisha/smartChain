@@ -3,3 +3,16 @@ What to add:
 
     when sending a file, break the file up into parts each size of a 1000 bytes
     create a while loop that sends these files to the server while it has not finished sending all the bytes
+
+Variable size data transfers
+
+In the interpreter, turn user requests into dicts by parsing them and saving them under vars in the dicts
+
+Create a central chain (represented by a set chain token) that is present in every node
+
+Whenever an interaction happens, record the timestamp, request route of the interaction in the blockchain and the shared chain
+
+Create ways to add data access tokens to the central network (add a feature to chainScript, create a token, upload this token to the central chain for that chain token, and then save that access token to the vm
+
+Have documents be named, with a “name” key in place, in order to be able to get these documents. Also allows overriding and fetching
+    can be achieved by letting data in the blockchain be parsed and then compared through the language

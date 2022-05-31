@@ -43,12 +43,6 @@ class Interface:
         self.peers = [root]
         if self.port != self.root_port:
             try:
-                # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                # client_sock.connect(('localhost', self.root_port))
-                # chain_data = json.dumps(self.prepare_request({'route': 'sync','port': self.port, 'chain_token': self.token}))
-                # client_sock.send(pack('>Q', len(chain_data)))
-                # client_sock.send(chain_data.encode('utf-8'))
-                # client_sock.close()
                 self.send_data_to_port(self.root_port, self.prepare_request({'route': 'sync','port': self.port, 'chain_token': self.token}))
             except:
                 print("error syncing chain")
@@ -67,6 +61,7 @@ class Interface:
         return self.wallet.verify(self.wallet.eccPublicKey, request, signature)
 
     def add_default_instructions(self):
+        #     have a route for sending access tokens
         default_instructions = []
         upload_data_script = {'route': "upload_data", 'instruction': "input \"data\" $var upload \"doc_data\" $var"}
         upload_data = {'script': upload_data_script, 'signature': self.wallet.sign(upload_data_script), 'public_key': self.wallet.eccPublicKey}
@@ -120,7 +115,7 @@ class Interface:
         # print(instruction)
         self.interpreter.user_request = user_request
         # print(self.interpreter.user_request)
-        upload_data, return_data = self.interpreter.exec_instruction(instruction)
+        upload_data, return_data = self.interpreter.exec_instruction_test(instruction)
         # print(instruction, upload_data, return_data)
         if upload_data != {}: # check that the data to upload is not empty
             signature = self.wallet.sign(upload_data)
@@ -171,14 +166,6 @@ class Interface:
             # the two nodes need to work out who is wrong, either by consensus or by checking each other's chains against each other
             peer = self.peers[random.randint(0, len(self.peers)-1)]
             try:
-                # client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                # client_sock.connect(('localhost', peer))
-                # replace_request = json.dumps(self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
-                # length = pack('>Q', len(replace_request))
-                # client_sock.send(replace_request.encode('utf-8'))
-                # client_sock.send(length)
-                # client_sock.close()
-                # print("corrupt block", self.bc.chain[-1].to_json(), blockJson)
                 self.send_data_to_port(peer, self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
             except:
                 if peer == self.root_port:
@@ -197,14 +184,6 @@ class Interface:
             self.peers.append(newPort)
         # print(newPort)
 
-        # calculate the peers that will the node connect to
-
-        #either send the data directly to that port or send it to all ports but only specify the required port
-        # new_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        # new_sock.connect(('localhost', newPort))
-        # new_sock.send(json.dumps(self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer})).encode('utf-8'))
-        # new_sock.close()
-
         self.send_data_to_port(newPort, self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
         self.send_data(self.prepare_request({'chain_token': self.token,'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port}))
         return True
@@ -217,8 +196,7 @@ class Interface:
 
     # network function
     def send_data(self, data):
-        length = pack('>Q', len(data))
-        self.lock.acquire()
+        # self.lock.acquire()
         for peer in self.peers:
             if peer != self.port:
                 self.send_data_to_port(peer, data)
