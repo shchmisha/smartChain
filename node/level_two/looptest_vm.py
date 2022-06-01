@@ -116,7 +116,7 @@ class Interface:
         self.interpreter.user_request = user_request
         # print(self.interpreter.user_request)
         upload_data, return_data = self.interpreter.exec_instruction_test(instruction)
-        # print(instruction, upload_data, return_data)
+        print(instruction, upload_data, return_data)
         if upload_data != {}: # check that the data to upload is not empty
             signature = self.wallet.sign(upload_data)
             data = {'content': upload_data}
