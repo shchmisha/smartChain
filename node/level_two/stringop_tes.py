@@ -652,23 +652,16 @@ class Interpreter:
 
             if toks[new_index] == "DICT":
                 new_index+=1
-            elif toks[new_index][:3]=="VAR":
-                if self.symbols[toks[new_index][4:]][:6]=="STRING":
-                    # key_string, to_add = self.evalString(toks,index)
-                    new_dict[self.symbols[toks[new_index][4:]][8:-1]] = toks[new_index+2]
-                    # new_dict[key_string[8:-1]] = toks[index+to_add+2]
-                    # print(new_dict)
-                    new_index+=3
-            elif toks[new_index][:6]=="STRING":
-                # key_string, to_add = self.evalString(toks,index)
-                # print(key_string)
-                # print(to_add)
-                print(toks[new_index][8:-1])
+            elif toks[new_index][:3]=="VAR" or toks[new_index][:6]=="STRING":
 
-                new_dict[toks[new_index][8:-1]] = toks[new_index+2]
-                # new_dict[key_string[8:-1]] = toks[index+to_add+2]
-                # print(new_dict)
-                new_index+=3
+                # new_dict[self.symbols[toks[new_index][4:]][8:-1]] = toks[new_index+2]
+                # new_index+=3
+                dict_key, to_add_1 = self.evalExpr(toks, new_index)
+                dict_val, to_add_2 = self.evalExpr(toks, new_index+to_add_1+2)
+                new_dict[dict_key]=dict_val
+                new_index+=to_add_1+3+to_add_2
+
+
 
         # print(toks[new_index])
 
@@ -734,6 +727,17 @@ class Interpreter:
                     # print(i)
                     i+=self.exec_func(toks, i)
                     # print(i)
+                elif toks[i+1]=="ARR":
+                    varval = self.symbols[toks[i][4:]]
+                    key,to_add_1 = self.evalExpr(toks,i+2)
+                    new_val,to_add_2 = self.evalExpr(toks,i+3+to_add_1)
+                    if varval[:3]=="ARR":
+                        arr = self.arrays[toks[i][4:]]
+                        arr[int(key[4:])]=new_val
+                    if varval[:4]=="DICT":
+                        dictionary = self.dicts[toks[i][4:]]
+                        dictionary[int(key[4:])]=new_val
+                    i+=3+to_add_1+to_add_2
                 elif toks[i+1]=="POP":
                     arr = self.getVariable(toks[i])
                     arr.pop()
@@ -819,8 +823,13 @@ class Interpreter:
                     self.dicts[toks[i+1+to_add][4:]]=req_val_dict
                     self.symbols[toks[i+1+to_add][4:]]="DICT:"+toks[i+1+to_add][4:]
                 else:
-                    self.symbols[toks[i+2+to_add][4:]] = req_val_data[0]
-                    to_add=1
+                    # check forlength ofthe array
+                    if len(req_val_data)==1:
+                        self.symbols[toks[i+2+to_add][4:]] = req_val_data[0]
+                        to_add=1
+                    else:
+                        self.symbols[toks[i+2+to_add][4:]] = req_val_data[0]
+                        to_add=1
                 # print(req_val_data)
                 # print(toks[i+to_add+2])
 
@@ -832,9 +841,33 @@ class Interpreter:
                 # save everything to one upload_data object and save it to the blockchain
                 varval = self.symbols[toks[i+2][4:]]
                 if varval[:4] =="DICT":
-                    self.upload_data[toks[i+1][8:-1]] = self.dicts[varval[5:]]
+                    dictionary = self.dicts[varval[5:]]
+                    for key in dictionary:
+                        if dictionary[key][:3]=="NUM":
+                            dictionary[key]=dictionary[key][4:]
+                        elif dictionary[key][:6]=="STRING":
+                            dictionary[key]=dictionary[key][7:]
+                        elif dictionary[key][:3]=="VAR":
+                            dict_val = self.symbols[dictionary[key][4:]]
+                            if dict_val[:3]=="NUM":
+                                dictionary[key]=dict_val[4:]
+                            elif dict_val[:6]=="STRING":
+                                dictionary[key]=dict_val[7:]
+                    self.upload_data[toks[i+1][8:-1]] = dictionary
                 elif varval[:3] =="ARR":
-                    self.upload_data[toks[i+1][8:-1]] = self.arrays[varval[4:]]
+                    arr = self.arrays[varval[4:]]
+                    for arr_i in range(len(arr)):
+                        if arr[arr_i][:3]=="NUM":
+                            arr[arr_i]=arr[arr_i][4:]
+                        elif arr[arr_i][:6]=="STRING":
+                            arr[arr_i]=arr[arr_i][7:]
+                        elif arr[arr_i][:3]=="VAR":
+                            arr_val = self.symbols[arr[arr_i][4:]]
+                            if arr_val[:3]=="NUM":
+                                arr[arr_i]=arr_val[4:]
+                            elif arr_val[:6]=="STRING":
+                                arr[arr_i]=arr_val[7:]
+                    self.upload_data[toks[i+1][8:-1]] = arr
                 else:
                     self.upload_data[toks[i+1][8:-1]] = varval
                 i+=3
@@ -857,6 +890,7 @@ class Interpreter:
 
                     for block in self.blockchain.chain:
                         for data in block.data:
+                            # data can be a string, an array,
                             self.symbols[toks[i+2][4:]] = "BCD:"+toks[i+2][4:]
                             self.blockchain_data[toks[i+2][4:]] = data
                             self.parse_test(toks, endforeach_index, i+4)
@@ -893,23 +927,29 @@ class Interpreter:
                     # gets the data stored at that index and assigns it to the variable provided
                     # the actual data will be stored in the blockchain_data array
                     fetched_data = None
-                    data_index, to_add = self.evalExpr(toks, i+3)
-                    di = int(data_index[4:])
-                    if di == -1:
-                        fetched_data = self.blockchain.chain[-1].data[-1]
-                    else:
-                        index = 0
+                    data_key, to_add = self.evalExpr(toks, i+3)
+                    if data_key[:3]=="NUM":
 
-                        while index<di:
-                            for block in self.blockchain.chain:
-                                for data in block.data:
-                                    if index == data_index-1:
-                                        fetched_data = data
-                                    index+=1
+                        data_index = int(data_key[4:])
+                        if data_index == -1:
+                            fetched_data = self.blockchain.chain[-1].data[-1]
+                        else:
+                            index = 0
+
+                            while index<data_index:
+                                for block in self.blockchain.chain:
+                                    for data in block.data:
+                                        if index == data_index-1:
+                                            fetched_data = data
+                                        index+=1
 
 
-                    self.symbols[toks[i+1][4:]] = "BCD:"+toks[i+1][4:]
-                    self.blockchain_data[toks[i+1][4:]] = fetched_data
+                        doc_data = self.lex(json.dumps(fetched_data))
+
+                        val, to_add = self.getDict(doc_data, 0)
+                        self.dicts[toks[i+1+to_add][4:]]=doc_data
+                        self.symbols[toks[i+1+to_add][4:]]="DICT:"+toks[i+1+to_add][4:]
+
 
                     i+=4+to_add
                 elif toks[i+1]=="RETURN":
