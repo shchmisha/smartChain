@@ -610,7 +610,7 @@ class Interpreter:
             func_args_index+=1
 
         # call the function recursively
-        self.parse(toks, func_desc[1], func_desc[0]+1)
+        self.parse_test(toks, func_desc[1], func_desc[0]+1)
         # print(endfunc_index)
         return func_args_index+1
 
@@ -658,7 +658,7 @@ class Interpreter:
                 # new_index+=3
                 dict_key, to_add_1 = self.evalExpr(toks, new_index)
                 dict_val, to_add_2 = self.evalExpr(toks, new_index+to_add_1+2)
-                new_dict[dict_key]=dict_val
+                new_dict[dict_key[8:-1]]=dict_val
                 new_index+=to_add_1+3+to_add_2
 
 
@@ -890,10 +890,12 @@ class Interpreter:
 
                     for block in self.blockchain.chain:
                         for data in block.data:
-                            # data can be a string, an array,
-                            self.symbols[toks[i+2][4:]] = "BCD:"+toks[i+2][4:]
-                            self.blockchain_data[toks[i+2][4:]] = data
+                            doc_data = self.lex(json.dumps(data))
+                            val, enddict_index = self.getDict(doc_data, 0)
+                            self.dicts[toks[i+2][4:]]=val
+                            self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
                             self.parse_test(toks, endforeach_index, i+4)
+
                     i = endforeach_index+1
                 else:
 
@@ -923,6 +925,7 @@ class Interpreter:
                 i = endwhile_index+1
             elif toks[i] == "BLOCKCHAIN":
                 if toks[i+1]=="GET":
+                    # BLOCKCHAIN GET VAR STRING/NUM
                     # how will getting docs work:
                     # gets the data stored at that index and assigns it to the variable provided
                     # the actual data will be stored in the blockchain_data array
@@ -943,358 +946,38 @@ class Interpreter:
                                             fetched_data = data
                                         index+=1
 
+                        doc_data = self.lex(json.dumps(fetched_data))
+
+                        val, enddict_index = self.getDict(doc_data, 0)
+                        self.dicts[toks[i+2][4:]]=val
+                        self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
+                    elif data_key[:6]=="STRING":
+                        final_data = self.blockchain.chain[-1].data[-1]
+                        for block in self.blockchain.chain:
+                            for data in block.data:
+                                if data_key[8:-1] in data:
+                                    fetched_data = data
+                                if json.dumps(data)==json.dumps(final_data):
+                                    break
 
                         doc_data = self.lex(json.dumps(fetched_data))
 
-                        val, to_add = self.getDict(doc_data, 0)
-                        self.dicts[toks[i+1+to_add][4:]]=doc_data
-                        self.symbols[toks[i+1+to_add][4:]]="DICT:"+toks[i+1+to_add][4:]
-
-
-                    i+=4+to_add
+                        val, enddict_index = self.getDict(doc_data, 0)
+                        self.dicts[toks[i+2][4:]]=val
+                        self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
+                    i+=3+to_add
                 elif toks[i+1]=="RETURN":
                     string, to_add = self.evalExpr(toks, i + 3)
                     if self.symbols[toks[i+2][4:]][:3] == "ARR":
                         self.return_data[string[8:-1]] = self.arrays[toks[i+2][4:]]
                     elif self.symbols[toks[i+2][4:]][:3] == "DICT":
-                        self.return_data[string[7:]] = self.dicts[toks[i+2][4:]]
-                    if self.symbols[toks[i+2][4:]][:3] == "BCD":
-                        self.return_data[string[8:-1]] = self.blockchain_data[toks[i+2][4:]]
+                        self.return_data[string[8:-1]] = self.dicts[toks[i+2][4:]]
                     else:
                         self.return_data[string[8:-1]] = self.symbols[toks[i+2][4:]]
 
                     i+=4+to_add
                 else:
                     break
-
-
-
-
-
-
-
-    def parse(self, toks, toks_end_index, toks_start_index=0):
-        i = toks_start_index
-        to = toks_end_index
-        # INSTEAD OF HAVING SET PATTERNS,ONLY REACT TO CERTAIN KEYWORDS
-        # ONCE A KEYWORD IS REACHED, THE PARSER SEEKS THE PATTERN
-        # THIS ALLOWS FOR VALUES TO BE FORMED FROM EXPRESSIONS
-
-        # print(i)
-        # print(to)
-        while (i<to):
-            # print(symbols)
-            # print(toks[i], i)
-            # if toks[i] == "FUNC":
-            #     print(toks[i] + " " + toks[i+1][:3] + " " + toks[i+2][:2])
-
-            # if i==16:
-            #     break
-            if toks[i]=="ENDIF" or toks[i]=="NL" or toks[i]=="ENDARR" or toks[i]=="ENDFUNC" or toks[i]=="ENDDICT": # tokes representing nl can be used tonotdisruptthe flow of the program, as well as disrupting the flow of some evaluations
-                i+=1
-            elif toks[i] + " " + toks[i+1][:3] == "RETURN VAR" or toks[i] + " " + toks[i+1][:3] == "RETURN NUM" or toks[i] + " " + toks[i+1][:6] == "RETURN STRING":
-                if (toks[i+1][:3] == "VAR" and self.symbols[toks[i+1][4:]][:3] == "NUM") or toks[i+1][:3] == "NUM":
-                    val, to_add = self.evalExpr(toks, i+1)
-                    self.return_val = "NUM:"+str(val)
-                elif toks[i+1][:3] == "VAR" and self.symbols[toks[i+1][4:]][:3] == "ARR":
-                    if self.symbols[toks[i+1][4:]][:4] == "FUNC":
-                        self.exec_func(toks, i+1)
-                    else:
-                        self.return_val = self.symbols[toks[i+1][4:]]
-                elif toks[i+1][:6] == "STRING":
-                    self.return_val = toks[i+1]
-                # one way to break
-                i=to
-            elif toks[i] + " " + toks[i+1][0:6] == "PRINT STRING" or toks[i] + " " + toks[i+1][0:3] == "PRINT NUM" or toks[i] + " " + toks[i+1][0:3] == "PRINT VAR":
-                to_add = 0
-                if toks[i+1][0:6]=="STRING":
-                    print(toks[i+1][8:-1])
-                elif toks[i+1][0:3]=="NUM":
-                    val, to_add = self.evalExpr(toks, i+1)
-                    print(val)
-                elif toks[i+1][0:3]=="VAR":
-                    # check teh value of each variable
-                    # print(self.symbols)
-                    if self.symbols[toks[i+1][4:]][:3] == "REQ":
-                        print(self.user_request[self.symbols[toks[i+1][4:]][5:-1]])
-                    elif self.symbols[toks[i+1][4:]][:4] == "DICT":
-                        print(i+1,toks[i+1])
-                        val, to_add = self.evalExpr(toks, i + 1)
-                        # print(self.dicts)
-                        print(val)
-                    else:
-                        val, to_add = self.getVariableTypes(toks, i + 1) # account for token being at the end of the line
-
-                        if to_add==0:
-                            print(self.getVariable(toks[i+1]))
-                        else:
-                            print(val)
-                i+=(2+to_add)
-                # sort out the matter of indexes being replaced after a new value is evaluated
-            elif toks[i][:3] + " " + toks[i+1] == "VAR OP:(" and self.symbols[toks[i][4:]][:4]=="FUNC":
-                # print("REACHED")
-                # how does it work:
-                # get the func_desc array from functions dict
-                # assign all vaiables in the func_desc array to data provided inside the brackets
-                # call the parse function from the starting index of the function to the ending
-
-                func_desc = self.functions[toks[i][4:]]
-
-                # set the variables in the func_desc to the variables provided inside the
-                args_index = i+2
-                func_args_index = 2
-
-                while toks[args_index]!="OP:)":
-                    if toks[args_index][:3] == "VAR":
-                        self.symbols[func_desc[func_args_index]] = self.symbols[toks[args_index][4:]]
-                    else:
-                        self.symbols[func_desc[func_args_index]] = toks[args_index]
-                    args_index+=1
-                    func_args_index+=1
-                # call the function recursively
-                self.parse(toks, func_desc[1], func_desc[0]+1)
-                # gothrough each value that was provided to the args, check ifitis a variable and then override their values with the values of the arguement
-                i+=(func_args_index+1)
-                # either deassign these variables or leave them be
-            elif toks[i][:3] + " " + toks[i+1] == "VAR POP":
-                arr = self.getVariable(toks[i])
-                arr.pop()
-                i+=2
-            elif toks[i] + " " + toks[i+1][:3] + " " + toks[i+2]== "FUNC VAR OP:(":
-
-
-                self.doAssign(toks[i+1], "FUNC:"+toks[i+1][4:])
-                func_desc = [] # [start, end, arg1, ...]
-                # get start of function
-                startfunc_index = i
-                while toks[startfunc_index]!=":":
-                    # print("startfunc")
-                    startfunc_index+=1
-                func_desc.append(startfunc_index)
-                # get end of function
-                endfunc_index = startfunc_index
-                while toks[endfunc_index]!="ENDFUNC":
-                    # print("endfunc")
-                    endfunc_index+=1
-                func_desc.append(endfunc_index)
-
-                args_index = i+2
-                while toks[args_index]!=":":
-                    # print("arg")
-                    if toks[args_index][:3]=="VAR":
-                        func_desc.append(toks[args_index][4:])
-                        self.doAssign(toks[args_index], "NONE")
-                    args_index +=1
-
-                self.functions[toks[i+1][4:]] = func_desc
-                # print(endfunc_index)
-                i = endfunc_index
-                # print(functions)
-                # a func is declared with the variable name to which it willbe tied. calling functions willbe different form calling variables
-            elif toks[i]+" "+toks[i+1][0:6]+ " "+ toks[i+2][0:3] == "INPUT STRING VAR":
-                #  INPUT "REQUEST_VAR_KEY" VAR
-                #  inside VAR, stores the key for that value inside the user input
-                #  create the blockchain api, where the values of these vars can be uploaded
-                ############
-
-                req_val = self.user_request[toks[i+1][8:-1]]
-                req_val_data = self.lex(json.dumps(req_val))
-                req_val_dict, to_add = self.getDict(req_val_data, 0)
-                print(req_val_dict)
-                self.dicts[toks[i+2][4:]]=req_val_dict
-                self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
-                # print(self.user_request)
-                # print(toks[i+2])
-
-                # self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
-                i+=3
-                # self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
-                # i+=3
-            elif toks[i]+" "+toks[i+1][:6]+ " "+ toks[i+2][0:3] == "UPLOAD STRING VAR":
-                # how will uploading work:
-                # either literally add whatever is stored in the document to the blockchain
-                # or
-                # save everything to one upload_data object and save it to the blockchain
-                varval = self.symbols[toks[i+2][4:]]
-                if varval[:3] =="REQ":
-                    self.upload_data[toks[i+1][8:-1]] = self.user_request[varval[5:-1]]
-                else:
-                    self.upload_data[toks[i+1][8:-1]] = varval
-                i+=3
-            elif toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:6] == "VAR EQUALS STRING" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:3] == "VAR EQUALS NUM" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:3] == "VAR EQUALS VAR" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2] == "VAR EQUALS ARR" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2] == "VAR EQUALS DICT":
-                # whenever values are assigned to variables, the type recognisers have to be in place inside the symbols dict
-                # variables can hold either numbers, strings, arrays and functions
-                to_add = 0
-                if toks[i+2][0:6]=="STRING":
-                    val, to_add = self.evalExpr(toks, i + 2)
-                    self.doAssign(toks[i], toks[i+2])
-                elif toks[i+2][0:3]=="NUM":
-                    val, to_add = self.evalExpr(toks, i+2)
-                    self.doAssign(toks[i], str(val))
-                elif toks[i+2][0:3]=="VAR":
-                    # check for functions and strings
-                    varval = self.symbols[toks[i+2][4:]]
-                    # print("symbols")
-                    if varval[:3] == "NUM":
-                        val, to_add = self.evalExpr(toks, i+2)
-                        # print("NUM:"+str(val))
-                        self.doAssign(toks[i], str(val))
-                    elif varval[:3] == "ARR":
-                        # check if the value stored is an array
-                        arr = self.arrays[toks[i+2][4:]]
-                        self.arrays[toks[i][4:]]=arr
-                        self.doAssign(toks[i], "ARR:"+toks[i][4:])
-                    elif varval[:4] == "DICT":
-                        # check if the value stored is an array
-                        dict = self.dicts[toks[i+2][4:]]
-                        self.dicts[toks[i][4:]]=dict
-                        self.doAssign(toks[i], "DICT:"+toks[i][4:])
-                    elif varval[:4] == "FUNC":
-                        # execute the function, set the value as the returned value of that function and then
-                        end_of_call_index = self.exec_func(toks,i+2)
-                        self.doAssign(toks[i], self.return_val)
-                        to_add+=(end_of_call_index-2)
-                    elif varval[:6] == "STRING":
-                        val, to_add = self.evalExpr(toks, i + 2)
-                        self.doAssign(toks[i], "STRING:\""+val+"\"")
-
-                elif toks[i+2]=="ARR":
-                    val, to_add = self.getArr(toks, i+3)
-                    self.arrays[toks[i][4:]]=val
-
-                    self.doAssign(toks[i], "ARR:"+toks[i][4:])
-                elif toks[i+2]=="DICT":
-                    val, to_add = self.getDict(toks, i+3)
-                    self.dicts[toks[i][4:]]=val
-
-                    self.doAssign(toks[i], "DICT:"+toks[i][4:])
-                    # when an array gets assigned to a var, the array is stored in a dictionary
-                    # the value stored in the symbols is the ARR header with the name of the variable
-                    # getting the array from a variable is the matter of checking that the ARR header is present and then using what comes after as the key for the arrays dict
-                i+=3+to_add
-            elif toks[i][:3] + " " + toks[i+1] + " " + toks[i+2][:3] == "VAR APPEND VAR" or toks[i][:3] + " " + toks[i+1] + " " + toks[i+2][:3] == "VAR APPEND NUM":
-                to_add = 0
-                arr = self.getVariable(toks[i])
-                if toks[i+2][:3] == "VAR":
-                    if self.symbols[toks[i+2][4:]][:3]=="NUM":
-                        val, to_add = self.evalExpr(toks, i+2)
-                        arr.append(str(val))
-                    elif self.symbols[toks[i+2][4:]][:4]=="FUNC":
-                        to_add = self.exec_func(toks, i+2)
-                        val = self.return_val
-                        if self.return_val[:3]=="NUM":
-                            arr.append("NUM:"+val)
-                    # if val[:3]=="VAR":
-                    #     val = getVariable(val[4:])
-
-                elif toks[i+2][:3] == "NUM":
-                    val, to_add = self.evalExpr(toks, i+2)
-                    arr.append(str(val))
-                i+=3+to_add
-            elif toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2]+ " "+ toks[i+3][0:3] == "BLOCKCHAIN VAR GET NUM" or toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:3] == "BLOCKCHAIN VAR GET VAR" or toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:2] == "BLOCKCHAIN VAR GET OP":
-                # how will getting docs work:
-                # gets the data stored at that index and assigns it to the variable provided
-                # the actual data will be stored in the blockchain_data array
-                fetched_data = None
-                data_index, to_add = self.evalExpr(toks, i+3)
-                di = int(data_index[4:])
-                if di == -1:
-                    fetched_data = self.blockchain.chain[-1].data[-1]
-                else:
-                    index = 0
-
-                    while index<di:
-                        for block in self.blockchain.chain:
-                            for data in block.data:
-                                if index == data_index-1:
-                                    fetched_data = data
-                                index+=1
-
-
-                self.symbols[toks[i+1][4:]] = "BCD:"+toks[i+1][4:]
-                self.blockchain_data[toks[i+1][4:]] = fetched_data
-
-                i+=4+to_add
-            elif toks[i]+" "+toks[i+1]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:6] == "BLOCKCHAIN RETURN VAR STRING":
-                string, to_add = self.evalExpr(toks, i + 3)
-                if self.symbols[toks[i+2][4:]][:3] == "BCD":
-                    self.return_data[string[8:-1]] = self.blockchain_data[toks[i+2][4:]]
-                elif self.symbols[toks[i+2][4:]][:3] == "ARR":
-                    self.return_data[string[7:]] = self.arrays[toks[i+2][4:]]
-                elif self.symbols[toks[i+2][4:]][:3] == "REQ":
-
-                    self.return_data[string[8:-1]] = self.user_request[self.symbols[toks[i+2][4:]][5:-1]]
-                else:
-                    self.return_data[string[8:-1]] = self.symbols[toks[i+2][4:]]
-
-                i+=4+to_add
-            elif toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2] + " " + toks[i+3][0:3] + " " + toks[i+4] == "IF VAR EQEQ NUM :":
-                # if condition is correct, + 5
-                # else, find the position of the end of the if statement and then adds that many spaces
-                # print(getVariable(toks[i+1])[4:], toks[i+3][4:])
-                if self.getVariable(toks[i+1])[4:] == toks[i+3][4:]:
-                    i+=5
-                else:
-                    # loop through the expression until endif is found, then add that much to i and continue
-                    while toks[i] != "ENDIF":
-                        i+=1
-            elif toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2][0:3] + toks[i+3] == "FOREACH VAR VAR:":
-                # foreach takes the array stored in the first var and assigns the secind var thevalue of each item of the array
-                # makes afor in loop for the array
-                # checks the current element of the array and then sets the second array to it
-                endforeach_index = i
-                while toks[endforeach_index]!="ENDFOREACH":
-                    endforeach_index+=1
-
-                arr = self.getVariable(toks[i+1])
-                for el_i in range(len(arr)):
-                    self.doAssign(toks[i+2], arr[el_i])
-                    self.parse(toks, endforeach_index, i+4)
-                    arr[el_i] = self.symbols[toks[i+2][4:]]
-                i = endforeach_index+1
-            elif toks[i] + " " + toks[i+1] + " " + toks[i+2][0:3] + toks[i+3] == "FOREACH BLOCKCHAIN VAR:":
-                endforeach_index = i
-                while toks[endforeach_index]!="ENDFOREACH":
-                    endforeach_index+=1
-
-                #complete this
-
-                for block in self.blockchain.chain:
-                    for data in block.data:
-                        self.symbols[toks[i+2][4:]] = "BCD:"+toks[i+2][4:]
-                        self.blockchain_data[toks[i+2][4:]] = data
-                        self.parse(toks, endforeach_index, i+4)
-
-
-
-
-                i = endforeach_index+1
-            elif toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2][0:4] + " " + toks[i+3][0:3] + toks[i+4] == "WHILE VAR COMP NUM:" or toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2][0:4] + " " + toks[i+3][0:3] + toks[i+4] == "WHILE VAR COMP VAR:":
-                # when a while loop is detected, check the values being compared.
-                # if the comparison returns true, skip over the statement to the instruction and run it.
-                # if the comparison returns false, skip over to after the next endwhile statement
-                # when the instruction inside the loop is ran, the cursor reached the endwhile statement
-                #
-
-                #USE RECURSIVE PARSEFUNCTIONIN WWHILELOOPING
-                # ceate an actual while loop, where the parse parses the toks list from index at the start of while loop till the end
-
-                if toks[i+3][0:3] == "NUM":
-                    endwhile_index = i
-                    while toks[endwhile_index]!="ENDWHILE":
-                        # need to loop to after the endwhile
-                        endwhile_index+=1
-                    while eval(self.getVariable(toks[i+1])[4:]+toks[i+2][5:]+toks[i+3][4:]):
-                        self.parse(toks, endwhile_index, i+5)
-                    i = endwhile_index+1
-                elif toks[i+3][0:3] == "VAR":
-                    endwhile_index = i
-                    while toks[endwhile_index]!="ENDWHILE":
-                        # need to loop to after the endwhile
-                        endwhile_index+=1
-                    while eval(self.getVariable(toks[i+1])[4:]+toks[i+2][5:]+self.getVariable(toks[i+3])[4:]):
-                        self.parse(toks, endwhile_index, i+5)
-                    i = endwhile_index+1
 
     def clear(self):
         self.tokens = []
@@ -1304,28 +987,29 @@ class Interpreter:
         self.upload_data = {}
         self.return_val = {}
 
-    def run_file(self, filename):
-        data = self.open_file(filename)
-        toks = self.lex(data)
-        self.parse(toks, len(toks))
+    # def run_file(self, filename):
+    #     data = self.open_file(filename)
+    #     toks = self.lex(data)
+    #     self.parse(toks, len(toks))
 
     def exec_instruction_test(self, instruction):
         toks = self.lex(instruction+"§")
         print(toks)
         self.parse_test(toks, len(toks))
+        print(self.dicts)
         upload_data = self.upload_data
         return_data = self.return_data
         self.clear()
         return upload_data, return_data
 
-    def exec_instruction(self, instruction):
-        toks = self.lex(instruction+"§")
-        print(toks)
-        self.parse(toks, len(toks))
-        upload_data = self.upload_data
-        return_data = self.return_data
-        self.clear()
-        return upload_data, return_data
+    # def exec_instruction(self, instruction):
+    #     toks = self.lex(instruction+"§")
+    #     print(toks)
+    #     self.parse(toks, len(toks))
+    #     upload_data = self.upload_data
+    #     return_data = self.return_data
+    #     self.clear()
+    #     return upload_data, return_data
 
 
 
@@ -1347,7 +1031,7 @@ if __name__ == "__main__":
     test_instruction = "$var = 5 $var1 = $var +5 while $var < $var1 { $var = $var + 1 } $var3 = [ 1, 2, 4 ] $var3 append $var $var3 append 4 $var3 pop func $func($arg1) { foreach $var3 $element { $element = $element + $arg1 } } func $func2($arg3) { $func($arg3) } $func($var) input \"key\" $key_var input \"data\" $data_var $dict_var = {\"dict_val\" : $var, } "
     input_upload_test = "input \"data\" $var upload \"doc_data\" $var blockchain return $var \"return val\" + \"1\""
     dict_test = "$dict_var = {\"dict_val\" : 4 } print $dict_var [\"dict_val\"]"
-    upload_data, return_data = interpreter.exec_instruction(input_upload_test)
+    # upload_data, return_data = interpreter.exec_instruction(input_upload_test)
     upload_data, return_data = interpreter.exec_instruction_test(test_instruction)
     # upload_data, return_data = interpreter.exec_instruction("$var = {\"kay_val\": 3, \"kay_val1\": 3} print $var[\"kay_val\"]")
     # print(upload_data, return_data)
@@ -1418,3 +1102,327 @@ if __name__ == "__main__":
 #                     else:
 #                         while toks[i] != "ENDIF":
 #                             i+=1
+
+
+#     def parse(self, toks, toks_end_index, toks_start_index=0):
+#         i = toks_start_index
+#         to = toks_end_index
+#         # INSTEAD OF HAVING SET PATTERNS,ONLY REACT TO CERTAIN KEYWORDS
+#         # ONCE A KEYWORD IS REACHED, THE PARSER SEEKS THE PATTERN
+#         # THIS ALLOWS FOR VALUES TO BE FORMED FROM EXPRESSIONS
+#
+#         # print(i)
+#         # print(to)
+#         while (i<to):
+#             # print(symbols)
+#             # print(toks[i], i)
+#             # if toks[i] == "FUNC":
+#             #     print(toks[i] + " " + toks[i+1][:3] + " " + toks[i+2][:2])
+#
+#             # if i==16:
+#             #     break
+#             if toks[i]=="ENDIF" or toks[i]=="NL" or toks[i]=="ENDARR" or toks[i]=="ENDFUNC" or toks[i]=="ENDDICT": # tokes representing nl can be used tonotdisruptthe flow of the program, as well as disrupting the flow of some evaluations
+#                 i+=1
+#             elif toks[i] + " " + toks[i+1][:3] == "RETURN VAR" or toks[i] + " " + toks[i+1][:3] == "RETURN NUM" or toks[i] + " " + toks[i+1][:6] == "RETURN STRING":
+#                 if (toks[i+1][:3] == "VAR" and self.symbols[toks[i+1][4:]][:3] == "NUM") or toks[i+1][:3] == "NUM":
+#                     val, to_add = self.evalExpr(toks, i+1)
+#                     self.return_val = "NUM:"+str(val)
+#                 elif toks[i+1][:3] == "VAR" and self.symbols[toks[i+1][4:]][:3] == "ARR":
+#                     if self.symbols[toks[i+1][4:]][:4] == "FUNC":
+#                         self.exec_func(toks, i+1)
+#                     else:
+#                         self.return_val = self.symbols[toks[i+1][4:]]
+#                 elif toks[i+1][:6] == "STRING":
+#                     self.return_val = toks[i+1]
+#                 # one way to break
+#                 i=to
+#             elif toks[i] + " " + toks[i+1][0:6] == "PRINT STRING" or toks[i] + " " + toks[i+1][0:3] == "PRINT NUM" or toks[i] + " " + toks[i+1][0:3] == "PRINT VAR":
+#                 to_add = 0
+#                 if toks[i+1][0:6]=="STRING":
+#                     print(toks[i+1][8:-1])
+#                 elif toks[i+1][0:3]=="NUM":
+#                     val, to_add = self.evalExpr(toks, i+1)
+#                     print(val)
+#                 elif toks[i+1][0:3]=="VAR":
+#                     # check teh value of each variable
+#                     # print(self.symbols)
+#                     if self.symbols[toks[i+1][4:]][:3] == "REQ":
+#                         print(self.user_request[self.symbols[toks[i+1][4:]][5:-1]])
+#                     elif self.symbols[toks[i+1][4:]][:4] == "DICT":
+#                         print(i+1,toks[i+1])
+#                         val, to_add = self.evalExpr(toks, i + 1)
+#                         # print(self.dicts)
+#                         print(val)
+#                     else:
+#                         val, to_add = self.getVariableTypes(toks, i + 1) # account for token being at the end of the line
+#
+#                         if to_add==0:
+#                             print(self.getVariable(toks[i+1]))
+#                         else:
+#                             print(val)
+#                 i+=(2+to_add)
+#                 # sort out the matter of indexes being replaced after a new value is evaluated
+#             elif toks[i][:3] + " " + toks[i+1] == "VAR OP:(" and self.symbols[toks[i][4:]][:4]=="FUNC":
+#                 # print("REACHED")
+#                 # how does it work:
+#                 # get the func_desc array from functions dict
+#                 # assign all vaiables in the func_desc array to data provided inside the brackets
+#                 # call the parse function from the starting index of the function to the ending
+#
+#                 func_desc = self.functions[toks[i][4:]]
+#
+#                 # set the variables in the func_desc to the variables provided inside the
+#                 args_index = i+2
+#                 func_args_index = 2
+#
+#                 while toks[args_index]!="OP:)":
+#                     if toks[args_index][:3] == "VAR":
+#                         self.symbols[func_desc[func_args_index]] = self.symbols[toks[args_index][4:]]
+#                     else:
+#                         self.symbols[func_desc[func_args_index]] = toks[args_index]
+#                     args_index+=1
+#                     func_args_index+=1
+#                 # call the function recursively
+#                 self.parse(toks, func_desc[1], func_desc[0]+1)
+#                 # gothrough each value that was provided to the args, check ifitis a variable and then override their values with the values of the arguement
+#                 i+=(func_args_index+1)
+#                 # either deassign these variables or leave them be
+#             elif toks[i][:3] + " " + toks[i+1] == "VAR POP":
+#                 arr = self.getVariable(toks[i])
+#                 arr.pop()
+#                 i+=2
+#             elif toks[i] + " " + toks[i+1][:3] + " " + toks[i+2]== "FUNC VAR OP:(":
+#
+#
+#                 self.doAssign(toks[i+1], "FUNC:"+toks[i+1][4:])
+#                 func_desc = [] # [start, end, arg1, ...]
+#                 # get start of function
+#                 startfunc_index = i
+#                 while toks[startfunc_index]!=":":
+#                     # print("startfunc")
+#                     startfunc_index+=1
+#                 func_desc.append(startfunc_index)
+#                 # get end of function
+#                 endfunc_index = startfunc_index
+#                 while toks[endfunc_index]!="ENDFUNC":
+#                     # print("endfunc")
+#                     endfunc_index+=1
+#                 func_desc.append(endfunc_index)
+#
+#                 args_index = i+2
+#                 while toks[args_index]!=":":
+#                     # print("arg")
+#                     if toks[args_index][:3]=="VAR":
+#                         func_desc.append(toks[args_index][4:])
+#                         self.doAssign(toks[args_index], "NONE")
+#                     args_index +=1
+#
+#                 self.functions[toks[i+1][4:]] = func_desc
+#                 # print(endfunc_index)
+#                 i = endfunc_index
+#                 # print(functions)
+#                 # a func is declared with the variable name to which it willbe tied. calling functions willbe different form calling variables
+#             elif toks[i]+" "+toks[i+1][0:6]+ " "+ toks[i+2][0:3] == "INPUT STRING VAR":
+#                 #  INPUT "REQUEST_VAR_KEY" VAR
+#                 #  inside VAR, stores the key for that value inside the user input
+#                 #  create the blockchain api, where the values of these vars can be uploaded
+#                 ############
+#
+#                 req_val = self.user_request[toks[i+1][8:-1]]
+#                 req_val_data = self.lex(json.dumps(req_val))
+#                 req_val_dict, to_add = self.getDict(req_val_data, 0)
+#                 print(req_val_dict)
+#                 self.dicts[toks[i+2][4:]]=req_val_dict
+#                 self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
+#                 # print(self.user_request)
+#                 # print(toks[i+2])
+#
+#                 # self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
+#                 i+=3
+#                 # self.doAssign(toks[i+2], "REQ:"+toks[i+1][7:])
+#                 # i+=3
+#             elif toks[i]+" "+toks[i+1][:6]+ " "+ toks[i+2][0:3] == "UPLOAD STRING VAR":
+#                 # how will uploading work:
+#                 # either literally add whatever is stored in the document to the blockchain
+#                 # or
+#                 # save everything to one upload_data object and save it to the blockchain
+#                 varval = self.symbols[toks[i+2][4:]]
+#                 if varval[:3] =="REQ":
+#                     self.upload_data[toks[i+1][8:-1]] = self.user_request[varval[5:-1]]
+#                 else:
+#                     self.upload_data[toks[i+1][8:-1]] = varval
+#                 i+=3
+#             elif toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:6] == "VAR EQUALS STRING" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:3] == "VAR EQUALS NUM" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2][0:3] == "VAR EQUALS VAR" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2] == "VAR EQUALS ARR" or toks[i][0:3] + " " + toks[i+1] + " " + toks[i+2] == "VAR EQUALS DICT":
+#                 # whenever values are assigned to variables, the type recognisers have to be in place inside the symbols dict
+#                 # variables can hold either numbers, strings, arrays and functions
+#                 to_add = 0
+#                 if toks[i+2][0:6]=="STRING":
+#                     val, to_add = self.evalExpr(toks, i + 2)
+#                     self.doAssign(toks[i], toks[i+2])
+#                 elif toks[i+2][0:3]=="NUM":
+#                     val, to_add = self.evalExpr(toks, i+2)
+#                     self.doAssign(toks[i], str(val))
+#                 elif toks[i+2][0:3]=="VAR":
+#                     # check for functions and strings
+#                     varval = self.symbols[toks[i+2][4:]]
+#                     # print("symbols")
+#                     if varval[:3] == "NUM":
+#                         val, to_add = self.evalExpr(toks, i+2)
+#                         # print("NUM:"+str(val))
+#                         self.doAssign(toks[i], str(val))
+#                     elif varval[:3] == "ARR":
+#                         # check if the value stored is an array
+#                         arr = self.arrays[toks[i+2][4:]]
+#                         self.arrays[toks[i][4:]]=arr
+#                         self.doAssign(toks[i], "ARR:"+toks[i][4:])
+#                     elif varval[:4] == "DICT":
+#                         # check if the value stored is an array
+#                         dict = self.dicts[toks[i+2][4:]]
+#                         self.dicts[toks[i][4:]]=dict
+#                         self.doAssign(toks[i], "DICT:"+toks[i][4:])
+#                     elif varval[:4] == "FUNC":
+#                         # execute the function, set the value as the returned value of that function and then
+#                         end_of_call_index = self.exec_func(toks,i+2)
+#                         self.doAssign(toks[i], self.return_val)
+#                         to_add+=(end_of_call_index-2)
+#                     elif varval[:6] == "STRING":
+#                         val, to_add = self.evalExpr(toks, i + 2)
+#                         self.doAssign(toks[i], "STRING:\""+val+"\"")
+#
+#                 elif toks[i+2]=="ARR":
+#                     val, to_add = self.getArr(toks, i+3)
+#                     self.arrays[toks[i][4:]]=val
+#
+#                     self.doAssign(toks[i], "ARR:"+toks[i][4:])
+#                 elif toks[i+2]=="DICT":
+#                     val, to_add = self.getDict(toks, i+3)
+#                     self.dicts[toks[i][4:]]=val
+#
+#                     self.doAssign(toks[i], "DICT:"+toks[i][4:])
+#                     # when an array gets assigned to a var, the array is stored in a dictionary
+#                     # the value stored in the symbols is the ARR header with the name of the variable
+#                     # getting the array from a variable is the matter of checking that the ARR header is present and then using what comes after as the key for the arrays dict
+#                 i+=3+to_add
+#             elif toks[i][:3] + " " + toks[i+1] + " " + toks[i+2][:3] == "VAR APPEND VAR" or toks[i][:3] + " " + toks[i+1] + " " + toks[i+2][:3] == "VAR APPEND NUM":
+#                 to_add = 0
+#                 arr = self.getVariable(toks[i])
+#                 if toks[i+2][:3] == "VAR":
+#                     if self.symbols[toks[i+2][4:]][:3]=="NUM":
+#                         val, to_add = self.evalExpr(toks, i+2)
+#                         arr.append(str(val))
+#                     elif self.symbols[toks[i+2][4:]][:4]=="FUNC":
+#                         to_add = self.exec_func(toks, i+2)
+#                         val = self.return_val
+#                         if self.return_val[:3]=="NUM":
+#                             arr.append("NUM:"+val)
+#                     # if val[:3]=="VAR":
+#                     #     val = getVariable(val[4:])
+#
+#                 elif toks[i+2][:3] == "NUM":
+#                     val, to_add = self.evalExpr(toks, i+2)
+#                     arr.append(str(val))
+#                 i+=3+to_add
+#             elif toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2]+ " "+ toks[i+3][0:3] == "BLOCKCHAIN VAR GET NUM" or toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:3] == "BLOCKCHAIN VAR GET VAR" or toks[i]+" "+toks[i+1][0:3]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:2] == "BLOCKCHAIN VAR GET OP":
+#                 # how will getting docs work:
+#                 # gets the data stored at that index and assigns it to the variable provided
+#                 # the actual data will be stored in the blockchain_data array
+#                 fetched_data = None
+#                 data_index, to_add = self.evalExpr(toks, i+3)
+#                 di = int(data_index[4:])
+#                 if di == -1:
+#                     fetched_data = self.blockchain.chain[-1].data[-1]
+#                 else:
+#                     index = 0
+#
+#                     while index<di:
+#                         for block in self.blockchain.chain:
+#                             for data in block.data:
+#                                 if index == data_index-1:
+#                                     fetched_data = data
+#                                 index+=1
+#
+#
+#                 self.symbols[toks[i+1][4:]] = "BCD:"+toks[i+1][4:]
+#                 self.blockchain_data[toks[i+1][4:]] = fetched_data
+#
+#                 i+=4+to_add
+#             elif toks[i]+" "+toks[i+1]+ " "+ toks[i+2][0:3]+ " "+ toks[i+3][0:6] == "BLOCKCHAIN RETURN VAR STRING":
+#                 string, to_add = self.evalExpr(toks, i + 3)
+#                 if self.symbols[toks[i+2][4:]][:3] == "BCD":
+#                     self.return_data[string[8:-1]] = self.blockchain_data[toks[i+2][4:]]
+#                 elif self.symbols[toks[i+2][4:]][:3] == "ARR":
+#                     self.return_data[string[7:]] = self.arrays[toks[i+2][4:]]
+#                 elif self.symbols[toks[i+2][4:]][:3] == "REQ":
+#
+#                     self.return_data[string[8:-1]] = self.user_request[self.symbols[toks[i+2][4:]][5:-1]]
+#                 else:
+#                     self.return_data[string[8:-1]] = self.symbols[toks[i+2][4:]]
+#
+#                 i+=4+to_add
+#             elif toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2] + " " + toks[i+3][0:3] + " " + toks[i+4] == "IF VAR EQEQ NUM :":
+#                 # if condition is correct, + 5
+#                 # else, find the position of the end of the if statement and then adds that many spaces
+#                 # print(getVariable(toks[i+1])[4:], toks[i+3][4:])
+#                 if self.getVariable(toks[i+1])[4:] == toks[i+3][4:]:
+#                     i+=5
+#                 else:
+#                     # loop through the expression until endif is found, then add that much to i and continue
+#                     while toks[i] != "ENDIF":
+#                         i+=1
+#             elif toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2][0:3] + toks[i+3] == "FOREACH VAR VAR:":
+#                 # foreach takes the array stored in the first var and assigns the secind var thevalue of each item of the array
+#                 # makes afor in loop for the array
+#                 # checks the current element of the array and then sets the second array to it
+#                 endforeach_index = i
+#                 while toks[endforeach_index]!="ENDFOREACH":
+#                     endforeach_index+=1
+#
+#                 arr = self.getVariable(toks[i+1])
+#                 for el_i in range(len(arr)):
+#                     self.doAssign(toks[i+2], arr[el_i])
+#                     self.parse(toks, endforeach_index, i+4)
+#                     arr[el_i] = self.symbols[toks[i+2][4:]]
+#                 i = endforeach_index+1
+#             elif toks[i] + " " + toks[i+1] + " " + toks[i+2][0:3] + toks[i+3] == "FOREACH BLOCKCHAIN VAR:":
+#                 endforeach_index = i
+#                 while toks[endforeach_index]!="ENDFOREACH":
+#                     endforeach_index+=1
+#
+#                 #complete this
+#
+#                 for block in self.blockchain.chain:
+#                     for data in block.data:
+#                         self.symbols[toks[i+2][4:]] = "BCD:"+toks[i+2][4:]
+#                         self.blockchain_data[toks[i+2][4:]] = data
+#                         self.parse(toks, endforeach_index, i+4)
+#
+#
+#
+#
+#                 i = endforeach_index+1
+#             elif toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2][0:4] + " " + toks[i+3][0:3] + toks[i+4] == "WHILE VAR COMP NUM:" or toks[i] + " " + toks[i+1][0:3] + " " + toks[i+2][0:4] + " " + toks[i+3][0:3] + toks[i+4] == "WHILE VAR COMP VAR:":
+#                 # when a while loop is detected, check the values being compared.
+#                 # if the comparison returns true, skip over the statement to the instruction and run it.
+#                 # if the comparison returns false, skip over to after the next endwhile statement
+#                 # when the instruction inside the loop is ran, the cursor reached the endwhile statement
+#                 #
+#
+#                 #USE RECURSIVE PARSEFUNCTIONIN WWHILELOOPING
+#                 # ceate an actual while loop, where the parse parses the toks list from index at the start of while loop till the end
+#
+#                 if toks[i+3][0:3] == "NUM":
+#                     endwhile_index = i
+#                     while toks[endwhile_index]!="ENDWHILE":
+#                         # need to loop to after the endwhile
+#                         endwhile_index+=1
+#                     while eval(self.getVariable(toks[i+1])[4:]+toks[i+2][5:]+toks[i+3][4:]):
+#                         self.parse(toks, endwhile_index, i+5)
+#                     i = endwhile_index+1
+#                 elif toks[i+3][0:3] == "VAR":
+#                     endwhile_index = i
+#                     while toks[endwhile_index]!="ENDWHILE":
+#                         # need to loop to after the endwhile
+#                         endwhile_index+=1
+#                     while eval(self.getVariable(toks[i+1])[4:]+toks[i+2][5:]+self.getVariable(toks[i+3])[4:]):
+#                         self.parse(toks, endwhile_index, i+5)
+#                     i = endwhile_index+1
