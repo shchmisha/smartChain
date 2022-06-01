@@ -229,6 +229,8 @@ class Interpreter:
             elif tok == "{":
                 if len(tokens)==0:
                     tokens.append("DICT")
+                elif tokens[-1]==":":
+                    tokens.append("DICT")
                 elif tokens[-1] == "EQUALS":
                     tokens.append("DICT")
                 else:
@@ -656,10 +658,18 @@ class Interpreter:
 
                 # new_dict[self.symbols[toks[new_index][4:]][8:-1]] = toks[new_index+2]
                 # new_index+=3
+                print(toks, toks[new_index], toks[new_index+1])
                 dict_key, to_add_1 = self.evalExpr(toks, new_index)
-                dict_val, to_add_2 = self.evalExpr(toks, new_index+to_add_1+2)
-                new_dict[dict_key[8:-1]]=dict_val
-                new_index+=to_add_1+3+to_add_2
+                # check whether the val is a dict
+                # can be done by checking whether the value of to_add_1+2 is DICT
+                if new_index+to_add_1+2 == "DICT":
+                    dict_val, to_add_2 = self.getDict(toks, new_index+to_add_1+2)
+                    new_dict[dict_key[8:-1]]=dict_val
+                    new_index+=to_add_1+3+to_add_2
+                else:
+                    dict_val, to_add_2 = self.evalExpr(toks, new_index+to_add_1+2)
+                    new_dict[dict_key[8:-1]]=dict_val
+                    new_index+=to_add_1+3+to_add_2
 
 
 
@@ -828,7 +838,7 @@ class Interpreter:
                         self.symbols[toks[i+2+to_add][4:]] = req_val_data[0]
                         to_add=1
                     else:
-                        self.symbols[toks[i+2+to_add][4:]] = req_val_data[0]
+                        self.symbols[toks[i+2+to_add][4:]] = req_val_data
                         to_add=1
                 # print(req_val_data)
                 # print(toks[i+to_add+2])
@@ -891,10 +901,18 @@ class Interpreter:
                     for block in self.blockchain.chain:
                         for data in block.data:
                             doc_data = self.lex(json.dumps(data))
-                            val, enddict_index = self.getDict(doc_data, 0)
-                            self.dicts[toks[i+2][4:]]=val
-                            self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
-                            self.parse_test(toks, endforeach_index, i+4)
+                            if "DICT" in doc_data:
+                                val, enddict_index = self.getDict(doc_data, 0)
+                                self.dicts[toks[i+2][4:]]=val
+                                self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
+                                self.parse_test(toks, endforeach_index, i+4)
+
+                            else:
+                                # check forlength ofthe array
+                                if len(doc_data)==1:
+                                    self.symbols[toks[i+2][4:]] = doc_data[0]
+                                else:
+                                    self.symbols[toks[i+2][4:]] = doc_data
 
                     i = endforeach_index+1
                 else:
@@ -1032,7 +1050,7 @@ if __name__ == "__main__":
     input_upload_test = "input \"data\" $var upload \"doc_data\" $var blockchain return $var \"return val\" + \"1\""
     dict_test = "$dict_var = {\"dict_val\" : 4 } print $dict_var [\"dict_val\"]"
     # upload_data, return_data = interpreter.exec_instruction(input_upload_test)
-    upload_data, return_data = interpreter.exec_instruction_test(test_instruction)
+    upload_data, return_data = interpreter.exec_instruction_test(json.dumps({'route': "upload_data", 'instruction': "input \"data\" $var upload \"doc_data\" $var"}))
     # upload_data, return_data = interpreter.exec_instruction("$var = {\"kay_val\": 3, \"kay_val1\": 3} print $var[\"kay_val\"]")
     # print(upload_data, return_data)
     # interpreter.blockchain.documentMap.append(upload_data)
