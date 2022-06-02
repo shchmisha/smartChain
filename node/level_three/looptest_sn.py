@@ -103,7 +103,7 @@ class SocketNode:
     def send_data_to_port(self, port, data):
 
         length = pack('<L', len(json.dumps(data).encode('utf-8')))
-        print("sending", len(length))
+        # print("sending", len(length))
         # print(len(json.dumps(data).encode('utf-8')))
         # length = str(len(json.dumps(data).encode('utf-8'))).encode('utf-8')
         # print("len", len(json.dumps(data).encode('utf-8')), json.dumps(data).encode('utf-8'))
@@ -149,14 +149,14 @@ class SocketNode:
         while True:
             bs = conn.recv(4)
 
-            (length,) = unpack('<L', bs)
+            # (length,) = unpack('<L', bs)
             # print(bs.decode())
-            # try:
-            #     (length,) = unpack('<L', bs)
-            #     print("recieved len",len(bs))
-            # except:
-            #     print(bs, addr)
-            #     break
+            try:
+                (length,) = unpack('<L', bs)
+                # print("recieved len",len(bs))
+            except:
+                # print(bs, addr)
+                break
             # length = int(bs.decode('utf-8'))
 
             bytes_data = b""
