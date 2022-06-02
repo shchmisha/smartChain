@@ -764,10 +764,11 @@ class Interpreter:
                 self.return_val = val
                 # one way to break
                 i=to
+                # print("Eeee")
             elif toks[i][0:3] == "VAR":
 
                 if toks[i+1]=="OP:(" and self.symbols[toks[i][4:]][:4]=="FUNC":
-                    print("func call")
+                    # print("func call")
                     # print(i)
                     i+=self.exec_func(toks, i)
                     # print(i)
@@ -862,12 +863,12 @@ class Interpreter:
                 req_val = self.user_request[key_string[8:-1]]
 
                 req_val_data = self.lex(json.dumps(req_val))
-                print(req_val_data)
+                # print(req_val_data)
                 if req_val_data[0] == "DICT":
-                    req_val_dict, to_add = self.getDict(req_val_data, 0)
-                    print(i + 1 + to_add)
-                    self.dicts[toks[i + 1 + to_add][4:]] = req_val_dict
-                    self.symbols[toks[i + 1 + to_add][4:]] = "DICT:" + toks[i + 1 + to_add][4:]
+                    req_val_dict, dict_index = self.getDict(req_val_data, 0)
+                    # print(i + 2 + to_add, toks)
+                    self.dicts[toks[i + 2 + to_add][4:]] = req_val_dict
+                    self.symbols[toks[i + 2 + to_add][4:]] = "DICT:" + toks[i + 2 + to_add][4:]
                 else:
                     # check forlength ofthe array
                     if len(req_val_data) == 1:
@@ -878,8 +879,7 @@ class Interpreter:
                         to_add=1
                 # print(req_val_data)
                 # print(toks[i+to_add+2])
-
-                i+=to_add+2
+                i += to_add + 3
             elif toks[i] == "UPLOAD":
                 # how will uploading work:
                 # either literally add whatever is stored in the document to the blockchain
@@ -916,6 +916,7 @@ class Interpreter:
                     self.upload_data[toks[i+1][8:-1]] = arr
                 else:
                     self.upload_data[toks[i+1][8:-1]] = varval
+                # print("upload data", self.upload_data)
                 i+=3
             elif toks[i] == "IF":
                 # if var1 > var2:
@@ -938,21 +939,23 @@ class Interpreter:
                         for data in block.data:
                             # if "script" not in data:
                             doc_data = None
+                            # print(data)
                             if "script" in data:
                                 doc_data = self.lex(json.dumps(data["script"]))
-                            elif "data" in data:
-                                doc_data = self.lex(json.dumps(data["data"]))
-                            if "DICT" in doc_data:
+                            elif "content" in data:
+                                doc_data = self.lex(json.dumps(data["content"]))
+                            if doc_data[0] == "DICT":
                                 val, enddict_index = self.getDict(doc_data, 0)
+
                                 self.dicts[toks[i + 2][4:]] = val
                                 self.symbols[toks[i + 2][4:]] = "DICT:" + toks[i + 2][4:]
-                                self.parse_test(toks, endforeach_index, i + 4)
                             else:
                                 # check forlength ofthe array
                                 if len(doc_data) == 1:
                                     self.symbols[toks[i + 2][4:]] = doc_data[0]
                                 else:
-                                    self.symbols[toks[i+2][4:]] = doc_data
+                                    self.symbols[toks[i + 2][4:]] = doc_data
+                            self.parse_test(toks, endforeach_index, i + 4)
                             # else:
 
                     i = endforeach_index+1
@@ -983,6 +986,7 @@ class Interpreter:
                     comparison, to_add = self.evalComp(toks, i+1)
                 i = endwhile_index+1
             elif toks[i] == "BLOCKCHAIN":
+                # print("HWHWHWHWWHWHWHWWHWHWHWHWHWHWWHWHWHWHWH")
                 if toks[i+1]=="GET":
                     # BLOCKCHAIN GET VAR STRING/NUM
                     # how will getting docs work:
@@ -1027,12 +1031,16 @@ class Interpreter:
                     i+=3+to_add
                 elif toks[i+1]=="RETURN":
                     string, to_add = self.evalExpr(toks, i + 3)
-                    if self.symbols[toks[i+2][4:]][:3] == "ARR":
-                        self.return_data[string[8:-1]] = self.arrays[toks[i+2][4:]]
-                    elif self.symbols[toks[i+2][4:]][:3] == "DICT":
-                        self.return_data[string[8:-1]] = self.dicts[toks[i+2][4:]]
+                    # print('return data var',self.return_data[string[8:-1]])
+                    if self.symbols[toks[i + 2][4:]][:3] == "ARR":
+                        self.return_data[string[8:-1]] = self.arrays[toks[i + 2][4:]]
+                        # print('return arr', self.return_data[string[8:-1]])
+                    elif self.symbols[toks[i + 2][4:]][:4] == "DICT":
+                        self.return_data[string[8:-1]] = self.dicts[toks[i + 2][4:]]
+                        # print('return dict', self.return_data[string[8:-1]])
                     else:
-                        self.return_data[string[8:-1]] = self.symbols[toks[i+2][4:]]
+                        self.return_data[string[8:-1]] = self.symbols[toks[i + 2][4:]]
+                        # print('return else', self.return_data[string[8:-1]])
 
                     i+=4+to_add
                 else:
@@ -1045,6 +1053,7 @@ class Interpreter:
         self.functions = {}
         self.upload_data = {}
         self.return_val = {}
+        self.return_data = {}
 
     # def run_file(self, filename):
     #     data = self.open_file(filename)
@@ -1052,13 +1061,13 @@ class Interpreter:
     #     self.parse(toks, len(toks))
 
     def exec_instruction_test(self, instruction):
-        toks = self.lex(instruction+"§")
+        toks = self.lex(instruction + "§")
         # print(toks)
         self.parse_test(toks, len(toks))
-        # print(self.dicts)
-        upload_data = self.upload_data
-        return_data = self.return_data
-
+        print(instruction, self.upload_data, self.return_data)
+        upload_data = dict(self.upload_data)
+        return_data = dict(self.return_data)
+        # print("return data", self.return_data)
         self.clear()
         return upload_data, return_data
 
@@ -1098,7 +1107,7 @@ if __name__ == "__main__":
     # print(interpreter.lex(dict_test))
     upload_data, return_data = interpreter.exec_instruction_test("input \"data\" $var upload \"doc_data\" $var")
     # upload_data, return_data = interpreter.exec_instruction("$var = {\"kay_val\": 3, \"kay_val1\": 3} print $var[\"kay_val\"]")
-    # print(upload_data, return_data)
+    print(upload_data, return_data)
     # interpreter.blockchain.documentMap.append(upload_data)
     # interpreter.blockchain.addBlock()
     # interpreter.blockchain.documentMap = []
