@@ -1,6 +1,8 @@
 import json
 import random
 import socket
+import struct
+import sys
 import threading
 import time
 import secrets
@@ -99,17 +101,22 @@ class SocketNode:
                 self.send_data_to_port(peer, data)
 
     def send_data_to_port(self, port, data):
-        length = pack('>Q', len(data))
+
+        length = pack('<L', len(json.dumps(data).encode('utf-8')))
+        print("sending", len(length))
+        # print(len(json.dumps(data).encode('utf-8')))
+        # length = str(len(json.dumps(data).encode('utf-8'))).encode('utf-8')
+        # print("len", len(json.dumps(data).encode('utf-8')), json.dumps(data).encode('utf-8'))
         # self.lock.acquire()
-        client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             client_sock.connect(('localhost', port))
-            # client_sock.sendall(length)
-            client_sock.send(json.dumps(data).encode('utf-8'))
+            client_sock.send(length)
+            client_sock.sendall(json.dumps(data).encode('utf-8'))
             # client_sock.shutdown(socket.SHUT_WR)
             client_sock.close()
         except:
-            print("node "+str(port)+" failed, changing ")
+            print("node " + str(port) + " failed, changing ")
             if port == self.ROOT_PORT:
                 self.ROOT_PORT = self.PORT
             self.peers.remove(port)
@@ -140,24 +147,39 @@ class SocketNode:
         # create a buffer object that receives these buffers and concats them onto the string object
         # print("new client connected ", addr)
         while True:
+            bs = conn.recv(4)
 
-            # bs = conn.recv(8)
-            # (length,) = unpack('>Q', bs)
-            # bytes_data = b""
-            dataJson = conn.recv(4096).decode('utf-8')
-            # while len(bytes_data) < length:
-            #     to_read = length - len(bytes_data)
-            #
-            #     bytes_data += conn.recv(4096 if to_read > 4096 else to_read)
+            (length,) = unpack('<L', bs)
+            # print(bs.decode())
+            # try:
+            #     (length,) = unpack('<L', bs)
+            #     print("recieved len",len(bs))
+            # except:
+            #     print(bs, addr)
+            #     break
+            # length = int(bs.decode('utf-8'))
+
+            bytes_data = b""
+            while len(bytes_data) < length:
+                to_read = length - len(bytes_data)
+
+                bytes_data += conn.recv(4096 if to_read > 4096 else to_read)
             # conn.shutdown(socket.SHUT_WR)
 
-            # dataJson = bytes_data.decode('utf-8')
+            dataJson = bytes_data.decode('utf-8')
+            # dataJson = conn.recv(4096).decode('utf-8')
             if not dataJson:
                 # print("client disconnected: "+str(addr[1]))
                 self.connections.remove(conn)
                 break
-
+            # print(dataJson)
             data = json.loads(dataJson)
+
+            # try:
+            #
+            # except:
+            #     print(length, dataJson)
+            #     print("exception")
 
             # .decode('utf-8')
             # if data["route"]=="test":
@@ -290,5 +312,5 @@ if __name__ == '__main__':
     # node6 = SocketNode(5006, ROOT_PORT, 'localhost')
     # time.sleep(30)
     # print(node.peers, node1.peers, node2.peers)
-    create_test_chain(node, 2)
-    # create_test_chain(node1, 2)
+    # create_test_chain(node, 2)
+    create_test_chain(node1, 2)

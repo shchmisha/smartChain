@@ -1,6 +1,7 @@
+import json
 import os
 from socket import *
-from struct import unpack
+from struct import unpack, pack
 
 
 class ServerProtocol:
@@ -53,7 +54,11 @@ class ServerProtocol:
 
         # could handle a bad ack here, but we'll assume it's fine.
 
+
 if __name__ == '__main__':
-    sp = ServerProtocol()
-    sp.listen('127.0.0.1', 8000)
-    sp.handle_images()
+    # sp = ServerProtocol()
+    # sp.listen('127.0.0.1', 8000)
+    # sp.handle_images()
+    num = pack('>Q', 12222222)
+    (length,) = unpack('>Q', num)
+    print(length)

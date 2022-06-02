@@ -212,13 +212,14 @@ class Interface:
 
 
     def send_data_to_port(self, port, data):
-        length = pack('>Q', len(data))
+        length = pack('<L', len(json.dumps(data).encode('utf-8')))
+        # length = str(len(json.dumps(data).encode('utf-8'))).encode('utf-8')
         # self.lock.acquire()
-        client_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             client_sock.connect(('localhost', port))
-            # client_sock.sendall(length)
-            client_sock.send(json.dumps(data).encode('utf-8'))
+            client_sock.send(length)
+            client_sock.sendall(json.dumps(data).encode('utf-8'))
             # client_sock.shutdown(socket.SHUT_WR)
             client_sock.close()
         except:
