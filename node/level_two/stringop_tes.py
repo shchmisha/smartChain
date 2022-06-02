@@ -505,6 +505,7 @@ class Interpreter:
         if isstr==1:
             return "STRING:\""+eval(string)+"\"", index-prev_index
         else:
+            # print(string)
             return "NUM:"+str(eval(string)), index-prev_index
 
     def evalComp(self, toks, index):
@@ -696,11 +697,13 @@ class Interpreter:
                 #     new_dict[dict_key[8:-1]]=toks[new_index+to_add_1+2],toks[new_index+to_add_1+2]
                 #     new_index+=to_add_1+3+to_add_2
                 # else:
-                if new_index + to_add_1 + 2 == "DICT":
+                # print(toks[new_index + to_add_1 + 2], )
+                if toks[new_index + to_add_1 + 2] == "DICT":
                     dict_val, to_add_2 = self.getDict(toks, new_index + to_add_1 + 2)
                     new_dict[dict_key[8:-1]] = dict_val
                     new_index += to_add_1 + 3 + to_add_2
                 else:
+
                     dict_val, to_add_2 = self.evalExpr(toks, new_index + to_add_1 + 2)
                     new_dict[dict_key[8:-1]] = dict_val
                     new_index += to_add_1 + 3 + to_add_2
@@ -875,8 +878,8 @@ class Interpreter:
                         self.symbols[toks[i + 2 + to_add][4:]] = req_val_data[0]
                         to_add = 1
                     else:
-                        self.symbols[toks[i+2+to_add][4:]] = req_val_data
-                        to_add=1
+                        self.symbols[toks[i + 2 + to_add][4:]] = req_val_data
+                        to_add = 1
                 # print(req_val_data)
                 # print(toks[i+to_add+2])
                 i += to_add + 3
@@ -1047,13 +1050,13 @@ class Interpreter:
                     break
 
     def clear(self):
-        self.tokens = []
-        self.symbols = {}
-        self.arrays = {}
-        self.functions = {}
-        self.upload_data = {}
-        self.return_val = {}
-        self.return_data = {}
+        self.tokens = list()
+        self.symbols = dict()
+        self.arrays = dict()
+        self.functions = dict()
+        self.upload_data = dict()
+        self.return_val = dict()
+        self.return_data = dict()
 
     # def run_file(self, filename):
     #     data = self.open_file(filename)
@@ -1064,7 +1067,7 @@ class Interpreter:
         toks = self.lex(instruction + "§")
         # print(toks)
         self.parse_test(toks, len(toks))
-        print(instruction, self.upload_data, self.return_data)
+        # print(instruction, self.upload_data, self.return_data, self.symbols, self.dicts)
         upload_data = dict(self.upload_data)
         return_data = dict(self.return_data)
         # print("return data", self.return_data)

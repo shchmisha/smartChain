@@ -231,6 +231,7 @@ class SocketNode:
                 # {'chain_token':'chain_token', 'route':'route', 'content': {}}
                 chain_token = data['chain_token']
                 return_data = self.chains[chain_token].interact(data)
+                print(return_data)
                 conn.send(json.dumps(return_data).encode('utf-8'))
 
 

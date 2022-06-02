@@ -90,13 +90,21 @@ class Interface:
             print(self.port)
             # print(self.bc.blockchain_to_json())
             self.bc.documentMap = []
-            next_peer = self.peers[random.randint(0,len(self.peers)-1)]
+            next_peer = self.peers[random.randint(0, len(self.peers) - 1)]
             # print("actual next peer", next_peer, self.peers)
             self.next_peer = next_peer
 
-            self.send_data(self.prepare_request({'chain_token': self.token,'route': 'add_block', 'block': block.to_json(), 'next_peer': self.next_peer}))
+            self.send_data(self.prepare_request(
+                {'chain_token': self.token, 'route': 'add_block', 'block': block.to_json(),
+                 'next_peer': self.next_peer}))
 
             return block.to_json()
+
+    # add way to send data access tokens to other chains and get access to data from other networks
+    # either:
+    #   have a separate route, where a chain token is provided in the request. the token is generated, stored in the interface and sent around the network to reach the correct chain
+    # or:
+    #   create a way to make tokens in chainScript. create another BLOCKCHAIN function, which is used to send the token around to other chains
 
     def interact(self, user_request):
         # what to do:
@@ -124,7 +132,7 @@ class Interface:
             data["public_key"] = self.wallet.eccPublicKey
             self.bc.documentMap.append(data)
             self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'add_document', 'document': data}))
-        # print(return_data)
+        # print(self.bc.blockchain_to_json())
         # here the blockchain will record the interaction in the chain
         # it will consist of the timestamp, the signature from the interface
         return return_data
