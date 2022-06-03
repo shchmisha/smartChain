@@ -30,13 +30,14 @@ from node.level_two.wallet import Wallet
 #each request must be signed by a wallet
 
 class Interface:
-    def __init__(self, sign, root, port, token, eccPrivateKey, skey):
+    def __init__(self, sign, root, port, token, eccPrivateKey, skey, host):
         self.pk_signature = sign
         self.wallet = Wallet(eccPrivateKey, skey)
         self.bc = Blockchain(self.add_default_instructions())
         self.interpreter = Interpreter(self.bc)
         self.root_port = root
         self.port = port
+        self.host = host
         self.lock = threading.Lock()
         self.next_peer = self.root_port
         self.token = token
@@ -217,7 +218,7 @@ class Interface:
         # self.lock.acquire()
         client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            client_sock.connect(('localhost', port))
+            client_sock.connect((self.host, port))
             client_sock.send(length)
             client_sock.sendall(json.dumps(data).encode('utf-8'))
             # client_sock.shutdown(socket.SHUT_WR)

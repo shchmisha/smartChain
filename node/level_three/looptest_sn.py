@@ -10,12 +10,12 @@ from struct import pack, unpack
 
 from node.level_two.looptest_vm import Interface
 from node.level_two.wallet import Wallet
-
+host = '172.16.0.206'
 
 # add a signalling where a test message is sent out and then if any node responds then they are activeand valid
 
 class SocketNode:
-    def __init__(self, PORT, ROOT_PORT, host):
+    def __init__(self, PORT, ROOT_PORT, HOST):
         # each new chain must have a root node for its own sub network
         self.chains = {}
         self.lock = threading.Lock()
@@ -23,8 +23,9 @@ class SocketNode:
         self.peers = [ROOT_PORT]
         self.PORT = PORT
         self.ROOT_PORT = ROOT_PORT
-        self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.sock.bind((host, PORT))
+        self.HOST = HOST
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind((HOST, PORT))
         self.start_network()
         if self.PORT != self.ROOT_PORT:
             try:
@@ -48,7 +49,8 @@ class SocketNode:
 
         sign = user_wallet.sign("default_data")
         chain_token = str(secrets.token_bytes(16).hex())
-        new_chain = Interface(sign, self.PORT, self.PORT, chain_token, interface_wallet.serializePrivate(), interface_wallet.getSerializedKey())
+        new_chain = Interface(sign, self.PORT, self.PORT, chain_token, interface_wallet.serializePrivate(),
+                              interface_wallet.getSerializedKey(), self.HOST)
         self.chains[chain_token] = new_chain
 
         # introduce thread locks everywhere
@@ -79,7 +81,7 @@ class SocketNode:
         # takes the token, sign and the root port
         # inside the vm, sends a request tothe root node to sync
         if chain_token not in self.chains.keys():
-            new_chain = Interface(sign, root, self.PORT, chain_token, eccPrivateKey, skey)
+            new_chain = Interface(sign, root, self.PORT, chain_token, eccPrivateKey, skey, self.HOST)
             self.chains[chain_token] = new_chain
         # new_chain.start()
 
@@ -110,7 +112,8 @@ class SocketNode:
         # self.lock.acquire()
         client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            client_sock.connect(('localhost', port))
+            # later, ports will be replaced by other hosts, therefore
+            client_sock.connect((self.HOST, port))
             client_sock.send(length)
             client_sock.sendall(json.dumps(data).encode('utf-8'))
             # client_sock.shutdown(socket.SHUT_WR)
@@ -303,14 +306,14 @@ if __name__ == '__main__':
     # if os.environ['PEER'] == 'TRUE':
     #     PORT = random.randint(5001, 6000)
 
-    node = SocketNode(5000, ROOT_PORT, 'localhost')
-    node1 = SocketNode(5001, ROOT_PORT, 'localhost')
-    node2 = SocketNode(5002, ROOT_PORT, 'localhost')
+    node = SocketNode(5000, ROOT_PORT, host)
+    node1 = SocketNode(5001, ROOT_PORT, host)
+    node2 = SocketNode(5002, ROOT_PORT, host)
     # node3 = SocketNode(5003, ROOT_PORT, 'localhost')
     # node4 = SocketNode(5004, ROOT_PORT, 'localhost')
     # node5 = SocketNode(5005, ROOT_PORT, 'localhost')
     # node6 = SocketNode(5006, ROOT_PORT, 'localhost')
     # time.sleep(30)
     # print(node.peers, node1.peers, node2.peers)
-    # create_test_chain(node, 2)
-    create_test_chain(node1, 2)
+    create_test_chain(node, 2)
+    # create_test_chain(node1, 2)
