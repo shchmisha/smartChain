@@ -1,8 +1,6 @@
 import json
 import random
 import socket
-import struct
-import sys
 import threading
 import time
 import secrets
@@ -11,6 +9,7 @@ from struct import pack, unpack
 from node.level_two.looptest_vm import Interface
 from node.level_two.wallet import Wallet
 host = '172.16.0.206'
+
 
 # add a signalling where a test message is sent out and then if any node responds then they are activeand valid
 
@@ -305,7 +304,7 @@ if __name__ == '__main__':
     # PORT = ROOT_PORT
     # if os.environ['PEER'] == 'TRUE':
     #     PORT = random.randint(5001, 6000)
-
+    # print(socket.gethostbyname(socket.gethostname()))
     node = SocketNode(5000, ROOT_PORT, host)
     node1 = SocketNode(5001, ROOT_PORT, host)
     node2 = SocketNode(5002, ROOT_PORT, host)

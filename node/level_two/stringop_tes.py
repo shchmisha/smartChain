@@ -2,43 +2,6 @@ import json
 
 from node.level_one.blockchain import Blockchain
 
-# BLOCKCHAIN COMMANDS:
-# BLOCKCHAIN UPLOAD VAR
-# upload data stored in that variable to the blockchain
-# each data uploaded will be signed by the vm's private key
-# BLOCKCHAIN GET VAR or BLOCKCHAIN GET NUM
-# get document at given index. if index is -1, gets the latest document
-# BLOCKCHAIN FILTER VAR or BLOCKCHAIN FILTER STRING
-# get all documents filtered by having a certain key in their dict
-
-
-# rework the document pool to just have a list of different pieces of data.
-# these pieces will probably be dictionaries.
-# the data stored inside will not be checked by default in the chain, but by the vm and the instructions uploaded for interractions
-
-# input "request_key" var
-# stores a certain value of the request dictionary in that variable
-
-# userRequest.user_request = dict({"key":"key", "data": {"content1": "content", "content2": "content"}, "signature": "signature"})
-
-# when the chain is created, create the default configurations and add them to the chain straight away. when syncing, these can be replaced
-# (networking transfers are not put through the interpreter)
-
-# add dictionaries
-# dictionaries will be dictated by the dict keyword
-# $var = { "STRING": value, "STRING2": value2 }
-# if tokens[-1] == EQUALS: tokens.append(DICT)
-# store user request as a dictionary itself
-
-# what to add:
-#   dictionaries
-#   ways to get specific documents by a certain key
-#   ways to compare data from user request
-#   ways to interact with data in dictionaries
-
-# when inputting something from user request, lex the request,then add it to the dictionaries, so that it could be used for comparisonsand interractions
-# once the request is processed, will be able to interract with it as pleased. when returning a value, or uploading data, it is turned back into nums and strings
-
 class Interpreter:
     def __init__(self, blockchain):
         self.tokens = []
@@ -505,7 +468,7 @@ class Interpreter:
         if isstr==1:
             return "STRING:\""+eval(string)+"\"", index-prev_index
         else:
-            # print(string)
+            print(string)
             return "NUM:"+str(eval(string)), index-prev_index
 
     def evalComp(self, toks, index):
@@ -850,9 +813,17 @@ class Interpreter:
                     # print(toks[i])
                 elif toks[i+1]=="APPEND":
                     arr = self.arrays[toks[i][4:]]
-                    append_val, to_add = self.evalExpr(toks,i+2)
-                    arr.append(append_val)
-                    i+=3+to_add
+                    to_add = 0
+                    # print(self.dicts)
+                    if toks[i + 2][0:3] == "VAR":
+                        if self.symbols[toks[i + 2][4:]][:3] == "ARR" and toks[i + 3] != "ARR":
+                            arr.append(self.arrays[toks[i + 2][4:]])
+                        elif self.symbols[toks[i + 2][4:]][:4] == "DICT" and toks[i + 3] != "ARR":
+                            arr.append(self.dicts[toks[i + 2][4:]])
+                        else:
+                            append_val, to_add = self.evalExpr(toks, i + 2)
+                            arr.append(append_val)
+                    i += 3 + to_add
             elif toks[i]=="FUNC":
                 i = self.define_func(toks,i)
             elif toks[i] == "INPUT":
@@ -935,8 +906,16 @@ class Interpreter:
             elif toks[i]=="FOREACH":
                 if toks[i+1]=="BLOCKCHAIN":
                     endforeach_index = i
-                    while toks[endforeach_index]!="ENDFOREACH":
-                        endforeach_index+=1
+                    counter = 0
+                    while True:
+                        endforeach_index += 1
+                        if toks[endforeach_index] == "FOREACH":
+                            counter += 1
+                        elif toks[endforeach_index] == "ENDFOREACH":
+                            if counter > 0:
+                                counter -= 1
+                            elif counter == 0:
+                                break
 
                     for block in self.blockchain.chain:
                         for data in block.data:
@@ -965,23 +944,41 @@ class Interpreter:
                 else:
 
                     endforeach_index = i
-                    while toks[endforeach_index]!="ENDFOREACH":
-                        endforeach_index+=1
+                    counter = 0
+                    while True:
+                        endforeach_index += 1
+                        if toks[endforeach_index] == "FOREACH":
+                            counter += 1
+                        elif toks[endforeach_index] == "ENDFOREACH":
+                            if counter > 0:
+                                counter -= 1
+                            elif counter == 0:
+                                break
 
-                    arr = self.getVariable(toks[i+1])
+                    arr = self.getVariable(toks[i + 1])
                     for el_i in range(len(arr)):
-                        self.doAssign(toks[i+2], arr[el_i])
-                        self.parse_test(toks, endforeach_index, i+4)
-                        arr[el_i] = self.symbols[toks[i+2][4:]]
-                    i = endforeach_index+1
+                        self.doAssign(toks[i + 2], arr[el_i])
+                        self.parse_test(toks, endforeach_index, i + 4)
+                        arr[el_i] = self.symbols[toks[i + 2][4:]]
+                    i = endforeach_index + 1
             elif toks[i] == "WHILE":
-
+                # have a loop until endwhile ismet
+                # if while is met, increment counter
+                # if endwhile is met and counter is greater than 0, dcreement counter
+                # if endwhile is met and counter is 0, set index as endwhile index
                 endwhile_index = i
-                while toks[endwhile_index]!="ENDWHILE":
-                    # need to loop to after the endwhile
-                    endwhile_index+=1
+                counter = 0
+                while True:
+                    endwhile_index += 1
+                    if toks[endwhile_index] == "WHILE":
+                        counter += 1
+                    elif toks[endwhile_index] == "ENDWHILE":
+                        if counter > 0:
+                            counter -= 1
+                        elif counter == 0:
+                            break
 
-                comparison, to_add = self.evalComp(toks, i+1)
+                comparison, to_add = self.evalComp(toks, i + 1)
 
                 while comparison:
                     # print(toks[i+to_add+3])
@@ -1021,31 +1018,66 @@ class Interpreter:
                         final_data = self.blockchain.chain[-1].data[-1]
                         for block in self.blockchain.chain:
                             for data in block.data:
-                                if data_key[8:-1] in data:
-                                    fetched_data = data
-                                if json.dumps(data)==json.dumps(final_data):
+                                # print(data)
+                                if "content" in data and "name" in data["content"] and data_key[8:-1] == \
+                                        data["content"]["name"]:
+                                    fetched_data = data["content"]
+                                if json.dumps(data) == json.dumps(final_data):
                                     break
 
                         doc_data = self.lex(json.dumps(fetched_data))
+                        if doc_data[0] == "DICT":
+                            val, enddict_index = self.getDict(doc_data, 0)
 
-                        val, enddict_index = self.getDict(doc_data, 0)
-                        self.dicts[toks[i+2][4:]]=val
-                        self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
+                            self.dicts[toks[i + 2][4:]] = val
+                            self.symbols[toks[i + 2][4:]] = "DICT:" + toks[i + 2][4:]
+                        else:
+                            # check forlength ofthe array
+                            if len(doc_data) == 1:
+                                self.symbols[toks[i + 2][4:]] = doc_data[0]
+                            else:
+                                self.symbols[toks[i + 2][4:]] = doc_data
                     i+=3+to_add
                 elif toks[i+1]=="RETURN":
                     string, to_add = self.evalExpr(toks, i + 3)
-                    # print('return data var',self.return_data[string[8:-1]])
-                    if self.symbols[toks[i + 2][4:]][:3] == "ARR":
-                        self.return_data[string[8:-1]] = self.arrays[toks[i + 2][4:]]
-                        # print('return arr', self.return_data[string[8:-1]])
-                    elif self.symbols[toks[i + 2][4:]][:4] == "DICT":
-                        self.return_data[string[8:-1]] = self.dicts[toks[i + 2][4:]]
-                        # print('return dict', self.return_data[string[8:-1]])
+                    varval = self.symbols[toks[i + 2][4:]]
+                    if varval[:4] == "DICT":
+                        dictionary = self.dicts[varval[5:]]
+                        # print(dictionary)
+                        for key in dictionary:
+                            if dictionary[key][:3] == "NUM":
+                                dictionary[key] = dictionary[key][4:]
+                            elif dictionary[key][:6] == "STRING":
+                                dictionary[key] = dictionary[key][7:]
+                            elif dictionary[key][:3] == "VAR":
+                                dict_val = self.symbols[dictionary[key][4:]]
+                                if dict_val[:3] == "NUM":
+                                    dictionary[key] = dict_val[4:]
+                                elif dict_val[:6] == "STRING":
+                                    dictionary[key] = dict_val[7:]
+                        self.return_data[string[8:-1]] = dictionary
+                    elif varval[:3] == "ARR":
+                        arr = self.arrays[varval[4:]]
+                        for arr_i in range(len(arr)):
+                            el_data = self.lex(json.dumps(arr[arr_i]))
+                            if el_data[0] == "DICT":
+                                pass
+                            else:
+                                if arr[arr_i][:3] == "NUM":
+                                    arr[arr_i] = arr[arr_i][4:]
+                                elif arr[arr_i][:6] == "STRING":
+                                    arr[arr_i] = arr[arr_i][7:]
+                                elif arr[arr_i][:3] == "VAR":
+                                    arr_val = self.symbols[arr[arr_i][4:]]
+                                    if arr_val[:3] == "NUM":
+                                        arr[arr_i] = arr_val[4:]
+                                    elif arr_val[:6] == "STRING":
+                                        arr[arr_i] = arr_val[7:]
+                        self.return_data[string[8:-1]] = arr
                     else:
-                        self.return_data[string[8:-1]] = self.symbols[toks[i + 2][4:]]
-                        # print('return else', self.return_data[string[8:-1]])
+                        self.return_data[string[8:-1]] = varval
 
-                    i+=4+to_add
+                    i += 4 + to_add
                 else:
                     break
 
@@ -1058,14 +1090,9 @@ class Interpreter:
         self.return_val = dict()
         self.return_data = dict()
 
-    # def run_file(self, filename):
-    #     data = self.open_file(filename)
-    #     toks = self.lex(data)
-    #     self.parse(toks, len(toks))
-
     def exec_instruction_test(self, instruction):
         toks = self.lex(instruction + "§")
-        # print(toks)
+        print(toks)
         self.parse_test(toks, len(toks))
         # print(instruction, self.upload_data, self.return_data, self.symbols, self.dicts)
         upload_data = dict(self.upload_data)
@@ -1094,11 +1121,11 @@ class Interpreter:
 if __name__ == "__main__":
     interpreter = Interpreter("chain")
     interpreter.blockchain = Blockchain("")
-    interpreter.blockchain.documentMap.append("data1")
-    interpreter.blockchain.documentMap.append("data2")
+    interpreter.blockchain.documentMap.append({"content": {'data': 'data1'}})
+    interpreter.blockchain.documentMap.append({"content": {'data': 'data2'}})
     interpreter.blockchain.addBlock()
     interpreter.blockchain.documentMap = []
-    interpreter.blockchain.documentMap.append("data3")
+    interpreter.blockchain.documentMap.append({"content": {'data': 'data3'}})
     interpreter.user_request = dict(
         {"key": "key", "data": {"content1": "content", "content2": "content"}, "signature": "signature"})
     test_instruction = "$var = 5 $var1 = $var +5 while $var < $var1 { $var = $var + 1 } $var3 = [ 1, 2, 4 ] $var3 append $var $var3 append 4 $var3 pop func $func($arg1) { foreach $var3 $element { $element = $element + $arg1 } } func $func2($arg3) { $func($arg3) } $func($var) input \"key\" $key_var input \"data\" $data_var $dict_var = {\"dict_val\" : $var, } "
@@ -1107,10 +1134,12 @@ if __name__ == "__main__":
     # upload_data, return_data = interpreter.exec_instruction(input_upload_test)
     # for char in :
     # print(interpreter.lex(json.dumps({'route': 'get_data', "instruction": "$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }"})))
-    # print(interpreter.lex(dict_test))
-    upload_data, return_data = interpreter.exec_instruction_test("input \"data\" $var upload \"doc_data\" $var")
+    upload_data, return_data = interpreter.exec_instruction_test(
+        " $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr \"data\"")
+    print(return_data)
+    # upload_data, return_data = interpreter.exec_instruction_test("input \"data\" $var upload \"doc_data\" $var")
     # upload_data, return_data = interpreter.exec_instruction("$var = {\"kay_val\": 3, \"kay_val1\": 3} print $var[\"kay_val\"]")
-    print(upload_data, return_data)
+    # print(upload_data, return_data)
     # interpreter.blockchain.documentMap.append(upload_data)
     # interpreter.blockchain.addBlock()
     # interpreter.blockchain.documentMap = []

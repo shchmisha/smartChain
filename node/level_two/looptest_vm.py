@@ -9,25 +9,7 @@ from node.level_one.blockchain import Blockchain
 from node.level_two.stringop_tes import Interpreter
 from node.level_two.wallet import Wallet
 
-# INTERFACE:
-# A parser class which can parse instructions. Will also have the chain tied to it, assigned in the contructor,  to allow blockchain interaction inside the language
-# A chain class which holds the chain and the document pool
-# the parser class will return it's data that needs to be saved to the blockchain, so that the vm can store in inside the data pool
-# REWORK THE DATA POOL TO ACCOUNT FOR DICTIONARIES
 
-# whenever a request is sent to the node, the chain is picked out by it's token. the request is passed onto the interface. once the interface gets the request, it searches through the blockchainfor the latest occurence of an instructionunder the provided name/route
-# it then executes that instruction, with the request provided being available to the parser. based on those instructions, and if all the security checks are passed (three sets of private keys' signatures stored in the vm and then checked against the keys provided by the request)
-# the instructions can potentially provide an extra level of security, a login system
-########## HOW TO MAKE REQUEST DATA ACCESSIBLE TO THE PARSER (maybe the input function?)
-# once instructions are executed, and the interractionis complete, the parser returns either data fetchedor a succeess messagefor uploading data
-# if data is fetched, the vm formats the data and then sends it as the response
-
-#whenever data is saved or sent to other nodes, it must have the vm's signature
-
-
-# for every network interaction for each chain, add a signature of the wallet's private key and checkit before each request
-# this will add security to the networking functions
-#each request must be signed by a wallet
 
 class Interface:
     def __init__(self, sign, root, port, token, eccPrivateKey, skey, host):
@@ -67,8 +49,10 @@ class Interface:
         upload_data_script = {'route': "upload_data", 'instruction': "input \"data\" $var upload \"doc_data\" $var"}
         upload_data = {'script': upload_data_script, 'signature': self.wallet.sign(upload_data_script), 'public_key': self.wallet.eccPublicKey}
         default_instructions.append(upload_data)
-        get_data_script = {'route': 'get_data', "instruction": "$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }"}
-        get_data = {'script': get_data_script, 'signature': self.wallet.sign(get_data_script), 'public_key': self.wallet.eccPublicKey}
+        get_data_script = {'route': 'get_data',
+                           "instruction": " $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr \"data\""}
+        get_data = {'script': get_data_script, 'signature': self.wallet.sign(get_data_script),
+                    'public_key': self.wallet.eccPublicKey}
         default_instructions.append(get_data)
         return default_instructions
 

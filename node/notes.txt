@@ -1,3 +1,60 @@
+# BLOCKCHAIN COMMANDS:
+ # BLOCKCHAIN UPLOAD VAR
+ # upload data stored in that variable to the blockchain
+ # each data uploaded will be signed by the vm's private key
+ # BLOCKCHAIN GET VAR or BLOCKCHAIN GET NUM
+ # get document at given index. if index is -1, gets the latest document
+ # BLOCKCHAIN FILTER VAR or BLOCKCHAIN FILTER STRING
+ # get all documents filtered by having a certain key in their dict
+
+
+ # rework the document pool to just have a list of different pieces of data.
+ # these pieces will probably be dictionaries.
+ # the data stored inside will not be checked by default in the chain, but by the vm and the instructions uploaded for interractions
+
+ # input "request_key" var
+ # stores a certain value of the request dictionary in that variable
+
+ # userRequest.user_request = dict({"key":"key", "data": {"content1": "content", "content2": "content"}, "signature": "signature"})
+
+ # when the chain is created, create the default configurations and add them to the chain straight away. when syncing, these can be replaced
+ # (networking transfers are not put through the interpreter)
+
+ # add dictionaries
+ # dictionaries will be dictated by the dict keyword
+ # $var = { "STRING": value, "STRING2": value2 }
+ # if tokens[-1] == EQUALS: tokens.append(DICT)
+ # store user request as a dictionary itself
+
+ # what to add:
+ #   dictionaries
+ #   ways to get specific documents by a certain key
+ #   ways to compare data from user request
+ #   ways to interact with data in dictionaries
+
+ # when inputting something from user request, lex the request,then add it to the dictionaries, so that it could be used for comparisonsand interractions
+ # once the request is processed, will be able to interract with it as pleased. when returning a value, or uploading data, it is turned back into nums and strings
+
+# INTERFACE:
+# A parser class which can parse instructions. Will also have the chain tied to it, assigned in the contructor,  to allow blockchain interaction inside the language
+# A chain class which holds the chain and the document pool
+# the parser class will return it's data that needs to be saved to the blockchain, so that the vm can store in inside the data pool
+# REWORK THE DATA POOL TO ACCOUNT FOR DICTIONARIES
+
+# whenever a request is sent to the node, the chain is picked out by it's token. the request is passed onto the interface. once the interface gets the request, it searches through the blockchainfor the latest occurence of an instructionunder the provided name/route
+# it then executes that instruction, with the request provided being available to the parser. based on those instructions, and if all the security checks are passed (three sets of private keys' signatures stored in the vm and then checked against the keys provided by the request)
+# the instructions can potentially provide an extra level of security, a login system
+########## HOW TO MAKE REQUEST DATA ACCESSIBLE TO THE PARSER (maybe the input function?)
+# once instructions are executed, and the interractionis complete, the parser returns either data fetchedor a succeess messagefor uploading data
+# if data is fetched, the vm formats the data and then sends it as the response
+
+#whenever data is saved or sent to other nodes, it must have the vm's signature
+
+
+# for every network interaction for each chain, add a signature of the wallet's private key and checkit before each request
+# this will add security to the networking functions
+#each request must be signed by a wallet
+
 What to add:
     better way of fixing broken chains
 
@@ -8,11 +65,19 @@ Variable size data transfers
 
 In the interpreter, turn user requests into dicts by parsing them and saving them under vars in the dicts
 
-Create a central chain (represented by a set chain token) that is present in every node
-
 Whenever an interaction happens, record the timestamp, request route of the interaction in the blockchain and the shared chain
 
 Create ways to add data access tokens to the central network (add a feature to chainScript, create a token, upload this token to the central chain for that chain token, and then save that access token to the vm
 
 Have documents be named, with a “name” key in place, in order to be able to get these documents. Also allows overriding and fetching
     can be achieved by letting data in the blockchain be parsed and then compared through the language
+
+BLOCKCHAIN ACCESS STRING:"CHAIN_TOKEN" STRING:"ACCESS_TOKEN" VAR:$var
+the request will connect to the blockchain
+blockchain gets data that is assigned to that access token
+    blockchain must have a route that is specific for sending data and getting data by vms
+blockchain sends the assigned data to the requesting vm
+
+BLOCKCHAIN GRANT STRING:"CHAIN_TOKEN"
+
+$arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr
