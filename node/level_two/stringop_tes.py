@@ -258,33 +258,41 @@ class Interpreter:
                     # tokens.append("}")
                 tok = ""
             elif tok == "[":
-                if var != "":
-                    tokens.append("VAR:" + var)
-                    # print(var)
-                    var = ""
-                    varStarted = 0
-                elif expr != "":
-                    tokens.append("NUM:" + expr)
-                    expr = ""
-                tokens.append("ARR")
-                tok=""
-            elif tok=="append" or tok == "APPEND":
+                if state == 1:
+                    string += tok
+                    tok = ""
+                else:
+                    if var != "":
+                        tokens.append("VAR:" + var)
+                        # print(var)
+                        var = ""
+                        varStarted = 0
+                    elif expr != "":
+                        tokens.append("NUM:" + expr)
+                        expr = ""
+                    tokens.append("ARR")
+                    tok = ""
+            elif tok == "append" or tok == "APPEND":
                 tokens.append("APPEND")
-                tok=""
-            elif tok=="pop" or tok == "POP":
+                tok = ""
+            elif tok == "pop" or tok == "POP":
                 tokens.append("POP")
-                tok=""
+                tok = ""
             elif tok == "]":
-                if var!="":
-                    tokens.append("VAR:"+var)
-                    # print(var)
-                    var = ""
-                    varStarted = 0
-                elif expr!="":
-                    tokens.append("NUM:"+expr)
-                    expr=""
-                tokens.append("ENDARR")
-                tok=""
+                if state == 1:
+                    string += tok
+                    tok = ""
+                else:
+                    if var != "":
+                        tokens.append("VAR:" + var)
+                        # print(var)
+                        var = ""
+                        varStarted = 0
+                    elif expr != "":
+                        tokens.append("NUM:" + expr)
+                        expr = ""
+                    tokens.append("ENDARR")
+                    tok = ""
             elif tok == "ENDWHILE" or tok == "endwhile":
                 tokens.append("ENDWHILE")
                 tok = ""
@@ -468,7 +476,7 @@ class Interpreter:
         if isstr==1:
             return "STRING:\""+eval(string)+"\"", index-prev_index
         else:
-            print(string)
+            # print(string)
             return "NUM:"+str(eval(string)), index-prev_index
 
     def evalComp(self, toks, index):
@@ -662,11 +670,11 @@ class Interpreter:
                 # else:
                 # print(toks[new_index + to_add_1 + 2], )
                 if toks[new_index + to_add_1 + 2] == "DICT":
+                    print(toks, new_index + to_add_1 + 2)
                     dict_val, to_add_2 = self.getDict(toks, new_index + to_add_1 + 2)
                     new_dict[dict_key[8:-1]] = dict_val
                     new_index += to_add_1 + 3 + to_add_2
                 else:
-
                     dict_val, to_add_2 = self.evalExpr(toks, new_index + to_add_1 + 2)
                     new_dict[dict_key[8:-1]] = dict_val
                     new_index += to_add_1 + 3 + to_add_2
@@ -927,7 +935,8 @@ class Interpreter:
                             elif "content" in data:
                                 doc_data = self.lex(json.dumps(data["content"]))
                             if doc_data[0] == "DICT":
-                                val, enddict_index = self.getDict(doc_data, 0)
+                                # print(data)
+                                val, endd1ict_index = self.getDict(doc_data, 0)
 
                                 self.dicts[toks[i + 2][4:]] = val
                                 self.symbols[toks[i + 2][4:]] = "DICT:" + toks[i + 2][4:]
@@ -1121,8 +1130,17 @@ class Interpreter:
 if __name__ == "__main__":
     interpreter = Interpreter("chain")
     interpreter.blockchain = Blockchain("")
-    interpreter.blockchain.documentMap.append({"content": {'data': 'data1'}})
-    interpreter.blockchain.documentMap.append({"content": {'data': 'data2'}})
+    interpreter.blockchain.documentMap.append(
+        {'script': {'route': 'upload_data', 'instruction': 'input "data" $var upload "doc_data" $var'}, 'signature': (
+        107500695781264076404092045543405215499556981663122697785336867366830724747670,
+        86647951037369554566547419937285212811305410737331794412213829469499743283225),
+         'public_key': '-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7U3zJrO81Ike+GmNAim4T6TEfxkGup73\nlcHtNffTpSUl6L0n5AAUIpqG7zfg9ISPX3SNMUp6QNfmeb8YC1DRWQ==\n-----END PUBLIC KEY-----\n'})
+    interpreter.blockchain.documentMap.append({'script': {'route': 'get_data',
+                                                          'instruction': ' $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr "data"'},
+                                               'signature': (
+                                               45053582901900210505014240088863943595482585855593071922571908052600085002059,
+                                               71608025411767655957430079021300988156124727024113088923880695520816108361007),
+                                               'public_key': '-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7U3zJrO81Ike+GmNAim4T6TEfxkGup73\nlcHtNffTpSUl6L0n5AAUIpqG7zfg9ISPX3SNMUp6QNfmeb8YC1DRWQ==\n-----END PUBLIC KEY-----\n'})
     interpreter.blockchain.addBlock()
     interpreter.blockchain.documentMap = []
     interpreter.blockchain.documentMap.append({"content": {'data': 'data3'}})

@@ -10,6 +10,15 @@ from node.level_two.stringop_tes import Interpreter
 from node.level_two.wallet import Wallet
 
 
+# how to add data access tokens in
+# have a data access token dictionary
+# tokens act as keys for the index of the document
+# when accessed, token is removed, the interaction is recorded, and data at that index is sent to the client
+# when granting, token is created, assigned a document and sent to the node that requests the token
+
+# main questions:
+#   how does the interpereter communicate with the sn
+# when a script requesting data access is run, it connects to the vm that hold the
 
 class Interface:
     def __init__(self, sign, root, port, token, eccPrivateKey, skey, host):

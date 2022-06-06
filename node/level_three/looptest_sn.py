@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import socket
 import threading
@@ -58,7 +59,8 @@ class SocketNode:
         # self.send_data({'chain_token': chain_token, 'route': 'add_chain', 'sign': sign, 'root_port': self.PORT, 'node_port': 5002})
         #
         # self.send_data({'route': 'add_chain'})
-        node = self.peers[random.randint(0, len(self.peers)-1)]
+        chain_nodes = []
+        node = self.peers[random.randint(0, len(self.peers) - 1)]
         prev = None
         for i in range(n):
             while True:
@@ -68,10 +70,11 @@ class SocketNode:
                     break
             data = {'chain_token': chain_token, 'route': 'add_chain', 'sign': sign, 'root_port': self.PORT, 'node_port': node, 'eccPrivateKey': interface_wallet.serializePrivate(), 'skey': "skey"}
             self.send_data(data)
+            chain_nodes.append(self.PORT)
             prev = node
             node = self.peers[random.randint(0, len(self.peers)-1)]
         # print(chain_token)
-        return chain_token, user_wallet.serializePrivate(), "default_data"
+        return chain_token, user_wallet.serializePrivate(), "default_data", chain_nodes
 
 
 
@@ -156,10 +159,12 @@ class SocketNode:
             try:
                 (length,) = unpack('<L', bs)
                 # print("recieved len",len(bs))
+
             except:
                 # print(bs, addr)
                 break
             # length = int(bs.decode('utf-8'))
+            print("len", length)
 
             bytes_data = b""
             while len(bytes_data) < length:
@@ -176,7 +181,7 @@ class SocketNode:
                 break
             # print(dataJson)
             data = json.loads(dataJson)
-
+            # print(data)
             # try:
             #
             # except:
@@ -244,6 +249,11 @@ class SocketNode:
                 chain_token = data['chain_token']
                 if self.PORT == data['node_port']:
                     self.add_chain(data['sign'], chain_token, data['root_port'], data['eccPrivateKey'], data['skey'])
+            elif data['route'] == 'create_chain':
+                ct, pk, dd, cn = self.create_chain(2)
+                conn.send(
+                    json.dumps({'chain_token': ct, 'private_key': pk, 'default_data': dd, 'chain_nodes': cn}).encode(
+                        'utf-8'))
             elif data['route'] == 'sync_node':
                 self.sync(data['port'])
             elif data['route'] == 'sync_node_peers':
@@ -255,7 +265,7 @@ class SocketNode:
                 # {'chain_token':'chain_token', 'route':'route', 'content': {}}
                 chain_token = data['chain_token']
                 return_data = self.chains[chain_token].interact(data)
-                print(return_data)
+                # print(return_data)
                 conn.send(json.dumps(return_data).encode('utf-8'))
 
 
@@ -305,14 +315,13 @@ if __name__ == '__main__':
     # if os.environ['PEER'] == 'TRUE':
     #     PORT = random.randint(5001, 6000)
     # print(socket.gethostbyname(socket.gethostname()))
-    node = SocketNode(5000, ROOT_PORT, host)
-    node1 = SocketNode(5001, ROOT_PORT, host)
-    node2 = SocketNode(5002, ROOT_PORT, host)
+    node = SocketNode(5000, ROOT_PORT, 'localhost')
+    node1 = SocketNode(5001, ROOT_PORT, 'localhost')
+    node2 = SocketNode(5002, ROOT_PORT, 'localhost')
     # node3 = SocketNode(5003, ROOT_PORT, 'localhost')
     # node4 = SocketNode(5004, ROOT_PORT, 'localhost')
     # node5 = SocketNode(5005, ROOT_PORT, 'localhost')
     # node6 = SocketNode(5006, ROOT_PORT, 'localhost')
     # time.sleep(30)
     # print(node.peers, node1.peers, node2.peers)
-    create_test_chain(node, 2)
     # create_test_chain(node1, 2)

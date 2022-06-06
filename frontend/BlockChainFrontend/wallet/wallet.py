@@ -11,8 +11,9 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
 # from Crypto.Cipher import AES
 from secrets import token_bytes
 
+
 class Wallet:
-    def __init__(self, eccPrivateKey = None, skey = None):
+    def __init__(self, eccPrivateKey=None, skey=None):
         self.eccPrivateKey = self.getPrivate(eccPrivateKey)
         self.eccPublicKey = self.getPublic()
         self.key = self.getKey(skey)
@@ -41,7 +42,7 @@ class Wallet:
             return token_bytes(16)
 
     def getSerializedKey(self):
-        return str(base64.b64encode(self.key),'utf-8')
+        return str(base64.b64encode(self.key), 'utf-8')
 
     def sign(self, data):
         return decode_dss_signature(self.eccPrivateKey.sign(
@@ -88,10 +89,11 @@ class Wallet:
     #     text = cipher.decrypt(cipherText.encode('latin1'))
     #     return text.decode('utf-8')
 
+
 if __name__ == '__main__':
     wallet = Wallet()
     data = {'data': 'data'}
-    encData = wallet.encrypt(data)
+    # encData = wallet.encrypt(data)
     print(wallet.eccPublicKey)
     # print(wallet.decrypt(wallet.key, encData))
     # print(wallet.decrypt(wallet.key, wallet.nonce, encData))
