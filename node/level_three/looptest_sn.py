@@ -49,7 +49,8 @@ class SocketNode:
 
         sign = user_wallet.sign("default_data")
         chain_token = str(secrets.token_bytes(16).hex())
-        new_chain = Interface(sign, self.PORT, self.PORT, chain_token, interface_wallet.serializePrivate(),
+        new_chain = Interface(user_wallet.eccPublicKey, self.PORT, self.PORT, chain_token,
+                              interface_wallet.serializePrivate(),
                               interface_wallet.getSerializedKey(), self.HOST)
         self.chains[chain_token] = new_chain
 
@@ -68,7 +69,9 @@ class SocketNode:
                     node = self.peers[random.randint(0, len(self.peers)-1)]
                 else:
                     break
-            data = {'chain_token': chain_token, 'route': 'add_chain', 'sign': sign, 'root_port': self.PORT, 'node_port': node, 'eccPrivateKey': interface_wallet.serializePrivate(), 'skey': "skey"}
+            data = {'chain_token': chain_token, 'route': 'add_chain', 'user_pk': user_wallet.eccPublicKey,
+                    'root_port': self.PORT, 'node_port': node, 'eccPrivateKey': interface_wallet.serializePrivate(),
+                    'skey': "skey"}
             self.send_data(data)
             chain_nodes.append(self.PORT)
             prev = node
@@ -76,14 +79,11 @@ class SocketNode:
         # print(chain_token)
         return chain_token, user_wallet.serializePrivate(), "default_data", chain_nodes
 
-
-
-
-    def add_chain(self, sign, chain_token, root, eccPrivateKey, skey):
+    def add_chain(self, user_pk, chain_token, root, eccPrivateKey, skey):
         # takes the token, sign and the root port
         # inside the vm, sends a request tothe root node to sync
         if chain_token not in self.chains.keys():
-            new_chain = Interface(sign, root, self.PORT, chain_token, eccPrivateKey, skey, self.HOST)
+            new_chain = Interface(user_pk, root, self.PORT, chain_token, eccPrivateKey, skey, self.HOST)
             self.chains[chain_token] = new_chain
         # new_chain.start()
 
@@ -162,9 +162,10 @@ class SocketNode:
 
             except:
                 # print(bs, addr)
+                # print("for some reason failed")
                 break
             # length = int(bs.decode('utf-8'))
-            print("len", length)
+            # print("len", length)
 
             bytes_data = b""
             while len(bytes_data) < length:
@@ -179,7 +180,7 @@ class SocketNode:
                 # print("client disconnected: "+str(addr[1]))
                 self.connections.remove(conn)
                 break
-            # print(dataJson)
+            print(dataJson)
             data = json.loads(dataJson)
             # print(data)
             # try:
@@ -248,7 +249,7 @@ class SocketNode:
                 # print("add chain")
                 chain_token = data['chain_token']
                 if self.PORT == data['node_port']:
-                    self.add_chain(data['sign'], chain_token, data['root_port'], data['eccPrivateKey'], data['skey'])
+                    self.add_chain(data['user_pk'], chain_token, data['root_port'], data['eccPrivateKey'], data['skey'])
             elif data['route'] == 'create_chain':
                 ct, pk, dd, cn = self.create_chain(2)
                 conn.send(
@@ -264,9 +265,12 @@ class SocketNode:
             else:
                 # {'chain_token':'chain_token', 'route':'route', 'content': {}}
                 chain_token = data['chain_token']
-                return_data = self.chains[chain_token].interact(data)
-                # print(return_data)
-                conn.send(json.dumps(return_data).encode('utf-8'))
+                chain = self.chains[chain_token]
+                print("REACHED")
+                if chain.verify_user_request(data):
+                    return_data = chain.interact(data)
+                    # print(return_data)
+                    conn.send(json.dumps(return_data).encode('utf-8'))
 
 
         conn.close()
@@ -302,12 +306,13 @@ def get_test_data(node, chain_token):
         node.chains[chain_token].interact({'route': 'get_data','chain_token': chain_token})
         time.sleep(20)
 
+
 def create_test_chain(node, n):
-    chain_token, pk, cp = node.create_chain(n)
-    thread = threading.Thread(target=upload_test_data, args=(node, chain_token))
-    thread.start()
-    thread2 = threading.Thread(target=get_test_data, args=(node, chain_token))
-    thread2.start()
+    chain_token, pk, cp, ee = node.create_chain(n)
+    # thread = threading.Thread(target=upload_test_data, args=(node, chain_token))
+    # thread.start()
+    # thread2 = threading.Thread(target=get_test_data, args=(node, chain_token))
+    # thread2.start()
 
 if __name__ == '__main__':
     ROOT_PORT = 5000

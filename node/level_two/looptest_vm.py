@@ -21,8 +21,8 @@ from node.level_two.wallet import Wallet
 # when a script requesting data access is run, it connects to the vm that hold the
 
 class Interface:
-    def __init__(self, sign, root, port, token, eccPrivateKey, skey, host):
-        self.pk_signature = sign
+    def __init__(self, user_pk, root, port, token, eccPrivateKey, skey, host):
+        self.user_pk = user_pk
         self.wallet = Wallet(eccPrivateKey, skey)
         self.bc = Blockchain(self.add_default_instructions())
         self.interpreter = Interpreter(self.bc)
@@ -52,17 +52,29 @@ class Interface:
         request.pop('pk_signature')
         return self.wallet.verify(self.wallet.eccPublicKey, request, signature)
 
+    def verify_user_request(self, request):
+        signature = request['pk_signature']
+        request.pop('pk_signature')
+        return self.wallet.verify(self.user_pk, request, signature)
+
     def add_default_instructions(self):
         #     have a route for sending access tokens
         default_instructions = []
         upload_data_script = {'route': "upload_data", 'instruction': "input \"data\" $var upload \"doc_data\" $var"}
-        upload_data = {'script': upload_data_script, 'signature': self.wallet.sign(upload_data_script), 'public_key': self.wallet.eccPublicKey}
+        upload_data = {'script': upload_data_script, 'signature': self.wallet.sign(upload_data_script),
+                       'public_key': self.wallet.eccPublicKey}
         default_instructions.append(upload_data)
         get_data_script = {'route': 'get_data',
-                           "instruction": " $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr \"data\""}
+                           "instruction": " $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr \"data\" "}
         get_data = {'script': get_data_script, 'signature': self.wallet.sign(get_data_script),
                     'public_key': self.wallet.eccPublicKey}
         default_instructions.append(get_data)
+
+        get_named_doc_script = {'route': "get_named_data",
+                                'instruction': " input \"doc_name\" $name blockchain get $var $name blockchain return $var \"data\" "}
+        get_named_doc = {'script': get_named_doc_script, 'signature': self.wallet.sign(get_named_doc_script),
+                         'public_key': self.wallet.eccPublicKey}
+        default_instructions.append(get_named_doc)
         return default_instructions
 
         # network function
@@ -119,9 +131,11 @@ class Interface:
         # print(self.interpreter.user_request)
         upload_data, return_data = self.interpreter.exec_instruction_test(instruction)
         print(upload_data, return_data)
-        if upload_data != {}: # check that the data to upload is not empty
-            signature = self.wallet.sign(upload_data)
-            data = {'content': upload_data}
+        if upload_data != {}:  # check that the data to upload is not empty
+            # signature = self.wallet.sign(upload_data)
+            signature = self.wallet.sign(upload_data['doc_data'])
+            # data = {'content': upload_data}
+            data = {'content': upload_data['doc_data']}
             data["signature"] = signature
             data["public_key"] = self.wallet.eccPublicKey
             self.bc.documentMap.append(data)
@@ -133,13 +147,14 @@ class Interface:
 
     def add_script(self, request):
         # {'chain_token': 'chain_token', 'route': 'add_script', 'script': 'script', 'script_route': 'script_route', 'pk_signature': 'pk_signature'}
-        if self.pk_signature == request['pk_signature']:
-            new_script = {'script':{'route': request['script_route'], 'instruction': request['script']}}
+        if self.verify_user_request(request):
+            new_script = {'script': {'route': request['script_route'], 'instruction': request['script']}}
             signature = self.wallet.sign(new_script)
             new_script['signature'] = signature
             new_script['publicKey'] = self.wallet.eccPublicKey
             self.bc.documentMap.append(new_script)
-            self.send_data(self.prepare_request({'chain_token': self.token, 'route': 'add_document', 'document': new_script, 'pk_sign': self.pk_signature}))
+            self.send_data(
+                self.prepare_request({'chain_token': self.token, 'route': 'add_document', 'document': new_script}))
 
 
 
@@ -173,7 +188,9 @@ class Interface:
                 if peer == self.root_port:
                     self.root_port = self.port
                 self.peers.remove(peer)
-                self.send_data(self.prepare_request({'chain_token': self.token,'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port, 'pk_sign': self.pk_signature}))
+                self.send_data(self.prepare_request(
+                    {'chain_token': self.token, 'route': 'sync_peers', 'peers': self.peers,
+                     'root_peer': self.root_port}))
             # send request to replace the chain
             return False
 
@@ -186,8 +203,11 @@ class Interface:
             self.peers.append(newPort)
         # print(newPort)
 
-        self.send_data_to_port(newPort, self.prepare_request({'chain_token': self.token,'route': 'replace_data', 'chain': self.bc.blockchain_to_json(), 'pool': self.bc.documentMap,'peers': self.peers, 'next_peer': self.next_peer}))
-        self.send_data(self.prepare_request({'chain_token': self.token,'route': 'sync_peers','peers': self.peers, 'root_peer': self.root_port}))
+        self.send_data_to_port(newPort, self.prepare_request(
+            {'chain_token': self.token, 'route': 'replace_data', 'chain': self.bc.blockchain_to_json(),
+             'pool': self.bc.documentMap, 'peers': self.peers, 'next_peer': self.next_peer}))
+        self.send_data(self.prepare_request(
+            {'chain_token': self.token, 'route': 'sync_peers', 'peers': self.peers, 'root_peer': self.root_port}))
         return True
 
     # network function

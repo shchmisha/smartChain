@@ -165,14 +165,18 @@ class Interpreter:
             elif tok == ":":
                 ############# the semi colon needs to be seperate from var
                 # print("reached : ")
-                if expr!="":
-                    tokens.append("NUM:"+expr)
-                    expr=""
-                elif var!="" and varStarted==1:
-                    tokens.append("VAR:"+var)
-                    var = ""
-                    varStarted = 0
-                tokens.append(":")
+                if state == 0:
+                    if expr != "":
+                        tokens.append("NUM:" + expr)
+                        expr = ""
+                    elif var != "" and varStarted == 1:
+                        tokens.append("VAR:" + var)
+                        var = ""
+                        varStarted = 0
+                    tokens.append(":")
+                elif state == 1:
+                    # print(string, "eeee")
+                    string += tok
                 tok = ""
             elif tok == "GET" or tok == "get":
                 tokens.append("GET")
@@ -329,21 +333,27 @@ class Interpreter:
                 tok = ""
             elif tok == "\"" or tok == " \"":
                 # print("\"")
+                # print(string)
                 if state == 0: # if a double quote sign is found when state is 0, the state is switched to 1
                     # tok = ""
                     state = 1
                 elif state == 1:  # if a double quote sign is found when the state is 1, the state is switched to 0 and the string is returned
                     # print(tokens[-1], 'smth')
                     if string[-1] == "\\":
-                        # print("reached bitch")
+                        # print(string)
                         string += tok
                         tok = ""
+                    # elif string[-1] == "\"":
+                    #     # print("SHHSHSSHSH",string)
+                    #     tok = ""
                     else:
                         tokens.append("STRING:" + string + "\"")
                         string = ""
                         state = 0
                         tok = ""
-            elif state == 1: # if the character is found while state is 1, the character is added to
+            elif state == 1:  # if the character is found while state is 1, the character is added to
+                # if string == ["\"S"]:
+                # print("such wow")
                 string += tok
                 tok = ""
             # print(tok)
@@ -841,24 +851,40 @@ class Interpreter:
                 ############
                 # print("input")
                 key_string, to_add = self.evalExpr(toks, i + 1)
+                # print(key_string[8:-1])
 
                 req_val = self.user_request[key_string[8:-1]]
 
-                req_val_data = self.lex(json.dumps(req_val))
-                # print(req_val_data)
-                if req_val_data[0] == "DICT":
-                    req_val_dict, dict_index = self.getDict(req_val_data, 0)
-                    # print(i + 2 + to_add, toks)
-                    self.dicts[toks[i + 2 + to_add][4:]] = req_val_dict
-                    self.symbols[toks[i + 2 + to_add][4:]] = "DICT:" + toks[i + 2 + to_add][4:]
+                # problem: before lexing, if value is a string, it is not detected
+                # print("reqval",req_val)
+                if type(req_val) == str:
+                    # print("EEEE", req_val)
+                    req_val_data = "STRING:\"" + req_val + "\""
+                    self.symbols[toks[i + 2 + to_add][4:]] = req_val_data
+                    # to_add = 0
+                elif type(req_val) == int:
+                    req_val_data = "NUM:" + req_val
+                    self.symbols[toks[i + 2 + to_add][4:]] = req_val_data
+                    # to_add = 0
                 else:
-                    # check forlength ofthe array
-                    if len(req_val_data) == 1:
-                        self.symbols[toks[i + 2 + to_add][4:]] = req_val_data[0]
-                        to_add = 1
+                    req_val_data = self.lex(json.dumps(req_val))
+                    # print(req_val_data)
+                    if req_val_data[0] == "DICT":
+                        req_val_dict, dict_index = self.getDict(req_val_data, 0)
+                        # print(i + 2 + to_add, toks)
+                        self.dicts[toks[i + 2 + to_add][4:]] = req_val_dict
+                        self.symbols[toks[i + 2 + to_add][4:]] = "DICT:" + toks[i + 2 + to_add][4:]
                     else:
-                        self.symbols[toks[i + 2 + to_add][4:]] = req_val_data
-                        to_add = 1
+                        # check forlength ofthe array
+                        if len(req_val_data) == 1:
+                            self.symbols[toks[i + 2 + to_add][4:]] = req_val_data[0]
+                            # to_add = 0
+                        else:
+                            req_val_arr, dict_index = self.getArr(req_val_data, 0)
+                            self.dicts[toks[i + 2 + to_add][4:]] = req_val_arr
+                            self.symbols[toks[i + 2 + to_add][4:]] = "ARR:" + toks[i + 2 + to_add][4:]
+
+                            # to_add = 1
                 # print(req_val_data)
                 # print(toks[i+to_add+2])
                 i += to_add + 3
@@ -874,13 +900,13 @@ class Interpreter:
                         if dictionary[key][:3]=="NUM":
                             dictionary[key]=dictionary[key][4:]
                         elif dictionary[key][:6]=="STRING":
-                            dictionary[key]=dictionary[key][7:]
+                            dictionary[key] = dictionary[key][8:-1]
                         elif dictionary[key][:3]=="VAR":
                             dict_val = self.symbols[dictionary[key][4:]]
                             if dict_val[:3]=="NUM":
                                 dictionary[key]=dict_val[4:]
                             elif dict_val[:6]=="STRING":
-                                dictionary[key]=dict_val[7:]
+                                dictionary[key] = dict_val[8:-1]
                     self.upload_data[toks[i+1][8:-1]] = dictionary
                 elif varval[:3] =="ARR":
                     arr = self.arrays[varval[4:]]
@@ -1021,33 +1047,47 @@ class Interpreter:
                         doc_data = self.lex(json.dumps(fetched_data))
 
                         val, enddict_index = self.getDict(doc_data, 0)
-                        self.dicts[toks[i+2][4:]]=val
-                        self.symbols[toks[i+2][4:]]="DICT:"+toks[i+2][4:]
-                    elif data_key[:6]=="STRING":
-                        final_data = self.blockchain.chain[-1].data[-1]
+                        self.dicts[toks[i + 2][4:]] = val
+                        self.symbols[toks[i + 2][4:]] = "DICT:" + toks[i + 2][4:]
+                    elif data_key[:6] == "STRING":
+                        # print(self.blockchain.chain[-1].data[-1])
+                        # final_data = self.blockchain.chain[-1].data[-1]
                         for block in self.blockchain.chain:
                             for data in block.data:
-                                # print(data)
-                                if "content" in data and "name" in data["content"] and data_key[8:-1] == \
-                                        data["content"]["name"]:
-                                    fetched_data = data["content"]
-                                if json.dumps(data) == json.dumps(final_data):
-                                    break
-
-                        doc_data = self.lex(json.dumps(fetched_data))
-                        if doc_data[0] == "DICT":
-                            val, enddict_index = self.getDict(doc_data, 0)
-
-                            self.dicts[toks[i + 2][4:]] = val
-                            self.symbols[toks[i + 2][4:]] = "DICT:" + toks[i + 2][4:]
+                                print(data)
+                                # print(self.lex(json.dumps(data)))
+                                if "content" in data and "name" in data["content"]:
+                                    if data_key[8:-1] == data["content"]["name"]:
+                                        # print("REACHED 2")
+                                        fetched_data = data["content"]
+                        print(fetched_data)
+                        if type(fetched_data) == str:
+                            # print("EEEE", toks[i+3])
+                            req_val_data = "STRING:\"" + fetched_data + "\""
+                            self.symbols[toks[i + 2 + to_add][4:]] = req_val_data
+                            # to_add = 0
+                        elif type(fetched_data) == int:
+                            req_val_data = "NUM:" + fetched_data
+                            self.symbols[toks[i + 2 + to_add][4:]] = req_val_data
+                            # to_add = 0
                         else:
-                            # check forlength ofthe array
-                            if len(doc_data) == 1:
-                                self.symbols[toks[i + 2][4:]] = doc_data[0]
+                            doc_data = self.lex(json.dumps(fetched_data))
+                            print(fetched_data)
+                            if doc_data[0] == "DICT":
+                                val, enddict_index = self.getDict(doc_data, 0)
+                                # print(val)
+                                self.dicts[toks[i + 2][4:]] = val
+                                self.symbols[toks[i + 2][4:]] = "DICT:" + toks[i + 2][4:]
                             else:
-                                self.symbols[toks[i + 2][4:]] = doc_data
-                    i+=3+to_add
+                                # check forlength ofthe array
+                                if len(doc_data) == 1:
+                                    self.symbols[toks[i + 2][4:]] = doc_data[0]
+                                else:
+                                    self.symbols[toks[i + 2][4:]] = doc_data
+                    # toks[i+3+to_add]
+                    i += 4 + to_add
                 elif toks[i+1]=="RETURN":
+                    # print("RECHE")
                     string, to_add = self.evalExpr(toks, i + 3)
                     varval = self.symbols[toks[i + 2][4:]]
                     if varval[:4] == "DICT":
@@ -1132,28 +1172,32 @@ if __name__ == "__main__":
     interpreter.blockchain = Blockchain("")
     interpreter.blockchain.documentMap.append(
         {'script': {'route': 'upload_data', 'instruction': 'input "data" $var upload "doc_data" $var'}, 'signature': (
-        107500695781264076404092045543405215499556981663122697785336867366830724747670,
-        86647951037369554566547419937285212811305410737331794412213829469499743283225),
+            107500695781264076404092045543405215499556981663122697785336867366830724747670,
+            86647951037369554566547419937285212811305410737331794412213829469499743283225),
          'public_key': '-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7U3zJrO81Ike+GmNAim4T6TEfxkGup73\nlcHtNffTpSUl6L0n5AAUIpqG7zfg9ISPX3SNMUp6QNfmeb8YC1DRWQ==\n-----END PUBLIC KEY-----\n'})
     interpreter.blockchain.documentMap.append({'script': {'route': 'get_data',
                                                           'instruction': ' $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr "data"'},
                                                'signature': (
-                                               45053582901900210505014240088863943595482585855593071922571908052600085002059,
-                                               71608025411767655957430079021300988156124727024113088923880695520816108361007),
+                                                   45053582901900210505014240088863943595482585855593071922571908052600085002059,
+                                                   71608025411767655957430079021300988156124727024113088923880695520816108361007),
                                                'public_key': '-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7U3zJrO81Ike+GmNAim4T6TEfxkGup73\nlcHtNffTpSUl6L0n5AAUIpqG7zfg9ISPX3SNMUp6QNfmeb8YC1DRWQ==\n-----END PUBLIC KEY-----\n'})
+    interpreter.blockchain.documentMap.append({'content': {'data': 'name', 'name': 'name'}})
+
     interpreter.blockchain.addBlock()
     interpreter.blockchain.documentMap = []
     interpreter.blockchain.documentMap.append({"content": {'data': 'data3'}})
     interpreter.user_request = dict(
-        {"key": "key", "data": {"content1": "content", "content2": "content"}, "signature": "signature"})
+        {"key": "key", "data": {"content1": "content", "content2": "content"}, "signature": "signature",
+         "doc_name": "name"})
     test_instruction = "$var = 5 $var1 = $var +5 while $var < $var1 { $var = $var + 1 } $var3 = [ 1, 2, 4 ] $var3 append $var $var3 append 4 $var3 pop func $func($arg1) { foreach $var3 $element { $element = $element + $arg1 } } func $func2($arg3) { $func($arg3) } $func($var) input \"key\" $key_var input \"data\" $data_var $dict_var = {\"dict_val\" : $var, } "
     input_upload_test = "input \"data\" $var upload \"doc_data\" $var blockchain return $var \"return val\" + \"1\""
     dict_test = "$dict_var = {\"dict_val\" : 4 }"
+    return_test = " $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr \"data\""
     # upload_data, return_data = interpreter.exec_instruction(input_upload_test)
     # for char in :
     # print(interpreter.lex(json.dumps({'route': 'get_data', "instruction": "$index = 0 foreach blockchain $var { blockchain return $var \"document\"+$index $index = $index + 1 }"})))
-    upload_data, return_data = interpreter.exec_instruction_test(
-        " $arr = [ ] foreach blockchain $var { $arr append $var } blockchain return $arr \"data\"")
+    get_named_data_test = " input \"doc_name\" $name blockchain get $var $name blockchain return $var \"data\" "
+    upload_data, return_data = interpreter.exec_instruction_test(input_upload_test)
     print(return_data)
     # upload_data, return_data = interpreter.exec_instruction_test("input \"data\" $var upload \"doc_data\" $var")
     # upload_data, return_data = interpreter.exec_instruction("$var = {\"kay_val\": 3, \"kay_val1\": 3} print $var[\"kay_val\"]")
