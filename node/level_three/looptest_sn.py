@@ -9,7 +9,7 @@ from struct import pack, unpack
 
 from node.level_two.looptest_vm import Interface
 from node.level_two.wallet import Wallet
-host = '172.16.0.206'
+host = 'localhost'
 
 
 # add a signalling where a test message is sent out and then if any node responds then they are activeand valid
@@ -192,6 +192,8 @@ class SocketNode:
             # .decode('utf-8')
             # if data["route"]=="test":
             #     print("test " + str(self.PORT))
+
+            # add a route where a vm accesses another vm
 
             ######################
             # with each network request, send the network signature of the client signature. it is used for security between different networking operations between chains

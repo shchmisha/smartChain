@@ -1,0 +1,19 @@
+class attributes:
+
+    dims of layers
+
+    input layer
+
+    num of hidden
+
+    hidden layers (list)
+
+    output layer
+
+
+train:
+    forward prop
+
+    back prop
+
+    upade params

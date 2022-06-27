@@ -1,6 +1,11 @@
 import json
-
+import secrets
 from node.level_one.blockchain import Blockchain
+
+
+# TOKEN STRING:"DOCUMENT_NAME" STRING:"HOST" NUM:PORT
+# creates a token
+# add
 
 class Interpreter:
     def __init__(self, blockchain):
@@ -22,7 +27,8 @@ class Interpreter:
         self.user_request = {}
 
         self.upload_data = {} # includes any data that needs to be uploaded
-        self.return_data = {} # any data that needs to be added to the pool
+        self.return_data = {}  # any data that needs to be added to the pool
+        self.new_access_tokens = {}
 
     def open_file(self, filename):
         data = open(filename, "r").read()
@@ -1127,8 +1133,21 @@ class Interpreter:
                         self.return_data[string[8:-1]] = varval
 
                     i += 4 + to_add
-                else:
-                    break
+            elif toks[i] == "TOKEN":
+                # granting:
+                # TOKEN GRANT STRING:"NAME_OF_DOC" STRING:"CHAIN_TOKEN"
+                # accessing
+                # TOKEN ACCESS STRING:"CHAIN_TOKEN"
+                if toks[i + 1] == "GRANT":
+                    name_of_doc, to_add = self.evalExpr(toks, i + 2)
+                    external_chain_token, to_add = self.evalExpr(toks, i + 2 + name_of_doc)
+                    self.new_access_tokens[str(secrets.token_hex(16))] = {'chain_token': external_chain_token,
+                                                                          'name_of_doc': name_of_doc}
+                    i += to_add + 2
+                elif toks[i + 1] == "ACCESS":
+                    pass
+            else:
+                break
 
     def clear(self):
         self.tokens = list()

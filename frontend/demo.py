@@ -5,7 +5,7 @@ import sqlite3
 from struct import pack
 
 import requests
-from BlockChainFrontend.wallet.wallet import Wallet
+from wallet import Wallet
 from frontend.db import Database
 
 chains = {}
