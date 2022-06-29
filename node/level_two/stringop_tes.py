@@ -8,9 +8,9 @@ from node.level_one.blockchain import Blockchain
 # add
 
 class Interpreter:
-    def __init__(self, blockchain):
+    def __init__(self, blockchain, vm):
         self.tokens = []
-
+        self.vm = vm
         self.symbols = {}
         self.arrays = {}
         self.dicts = {}
@@ -1145,7 +1145,10 @@ class Interpreter:
                                                                           'name_of_doc': name_of_doc}
                     i += to_add + 2
                 elif toks[i + 1] == "ACCESS":
+                    access_token, to_add = self.evalExpr(toks, i + 2)
                     pass
+                    # function in the vm that connects to another node and gets data by access token
+                    # function will be accessible y direct route or thoough the interpreter
             else:
                 break
 
@@ -1187,7 +1190,7 @@ class Interpreter:
 # have a function that checkswhetherthe value being got is a string or a num
 
 if __name__ == "__main__":
-    interpreter = Interpreter("chain")
+    interpreter = Interpreter("chain", "vm")
     interpreter.blockchain = Blockchain("")
     interpreter.blockchain.documentMap.append(
         {'script': {'route': 'upload_data', 'instruction': 'input "data" $var upload "doc_data" $var'}, 'signature': (

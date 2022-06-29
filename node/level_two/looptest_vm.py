@@ -1,4 +1,5 @@
 import json
+import secrets
 import socket
 import random
 import threading
@@ -20,12 +21,23 @@ from node.level_two.wallet import Wallet
 #   how does the interpereter communicate with the sn
 # when a script requesting data access is run, it connects to the vm that hold the
 
+# data access tokens:
+# stored in each vm
+# internal data access tokens are stored in a dictionary, where the key is the token and the value is the name of the document/index of doc/directory and name
+# external data access tokens are stored in a dictionary, where the key is the token and the value is the port
+# when accessing data access tokens, the request must include the token and the chain token of both vms
+# when recieving the request, must check the chain token, the access token and the port of the vm
+
+# grant access: adds data token and sends to vm
+
+
 class Interface:
-    def __init__(self, user_pk, root, port, token, eccPrivateKey, skey, host):
+    def __init__(self, user_pk, root, port, token, eccPrivateKey, skey, host, node):
         self.user_pk = user_pk
+        self.node = node
         self.wallet = Wallet(eccPrivateKey, skey)
         self.bc = Blockchain(self.add_default_instructions())
-        self.interpreter = Interpreter(self.bc)
+        self.interpreter = Interpreter(self.bc, self)
         self.root_port = root
         self.port = port
         self.host = host
@@ -33,9 +45,12 @@ class Interface:
         self.next_peer = self.root_port
         self.token = token
         self.peers = [root]
+        self.internal_access_tokens = {}
+        self.external_access_tokens = {}
         if self.port != self.root_port:
             try:
-                self.send_data_to_port(self.root_port, self.prepare_request({'route': 'sync','port': self.port, 'chain_token': self.token}))
+                self.send_data_to_port(self.root_port, self.prepare_request(
+                    {'route': 'sync', 'port': self.port, 'chain_token': self.token}))
             except:
                 print("error syncing chain")
         thread = threading.Thread(target=self.mine_blocks)
@@ -77,7 +92,105 @@ class Interface:
         default_instructions.append(get_named_doc)
         return default_instructions
 
+    def get_doc_index_by_name(self, doc_name):
+
+        # idea:
+        # iteerate through the blockchain backwards
+        # the first occurance that arises is the index at which
+
+        block_index = len(self.bc.chain) - 1
+        data_index = 0
+        while block_index >= 0:
+            data_index = len(self.bc.chain[block_index].data) - 1
+            block = self.bc.chain[block_index]
+            while data_index >= 0:
+                if "content" in block.data[data_index] and "name" in block.data[data_index]["content"]:
+                    if doc_name == block.data[data_index]["content"]["name"]:
+                        break
+                data_index -= 1
+            block_index -= 1
+        return (block_index, data_index)
+
+    def get_doc_by_index(self, block_index, data_index):
+        i = 0
+        j = 0
+        fetched_data = None
+        while i < block_index:
+            while j < data_index:
+                fetched_data = self.bc.chain[i].data[j]
+                j += 1
+            i += 1
+        return fetched_data
+
+    def get_doc_by_name(self, doc_name):
+        fetched_data = None
+        for block in self.bc.chain:
+            for data in block.data:
+                # print(self.lex(json.dumps(data)))
+                if "content" in data and "name" in data["content"]:
+                    if doc_name == data["content"]["name"]:
+                        fetched_data = data["content"]
+        return fetched_data
+
+    def grant_access(self, chain_token, name_of_doc):
+        access_token = secrets.token_hex(16)
+        data_index = self.get_doc_index_by_name(name_of_doc)
+        port = self.node.network_chains[chain_token][random.randint(0, len(self.node.network_chains[chain_token]))]
+        self.internal_access_tokens[access_token] = {'data_index': data_index, 'chain_token': chain_token}
+        # sync access tokens accross vm
+        self.send_data_to_port(port, {'chain_token': chain_token, 'route': 'receive_access',
+                                      'external_chain_token': self.token, 'access_token': access_token})
+        self.send_data({'chain_token': self.token, 'route': 'sync_access_tokens',
+                        'internal_access_tokens': self.internal_access_tokens,
+                        'external_access_tokens': self.external_access_tokens})
+
+    def receive_access(self, data_access_token, chain_token):
+        self.external_access_tokens[data_access_token] = chain_token
+        self.send_data({'chain_token': self.token, 'route': 'sync_access_tokens',
+                        'internal_access_tokens': self.internal_access_tokens,
+                        'external_access_tokens': self.external_access_tokens})
+
+    def request_access(self, access_token):
+        if access_token in self.external_access_tokens:
+            chain_token = self.external_access_tokens[access_token]
+            port = self.node.network_chains[chain_token][random.randint(0, len(self.node.network_chains[chain_token]))]
+            data = {"chain_token": chain_token, "route": "request_access", "access_token": access_token}
+            # make sure the connecton can receive data
+            length = pack('<L', len(json.dumps(data).encode('utf-8')))
+            client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                client_sock.connect((self.host, port))
+                client_sock.send(length)
+                client_sock.sendall(json.dumps(data).encode('utf-8'))
+                recv_data = client_sock.recv(4096)
+                dataJson = recv_data.decode('utf-8')
+                dec_data = json.loads(dataJson)
+                del self.internal_access_tokens[access_token]
+                return dec_data
+            except:
+                if port == self.root_port:
+                    self.root_port = self.port
+                self.peers.remove(port)
+                self.send_data(self.prepare_request(
+                    {'chain_token': self.token, 'route': 'sync_peers', 'peers': self.peers,
+                     'root_peer': self.root_port}))
+        return None
+
+    def data_access(self, access_token, port):
+        if access_token in self.internal_access_tokens:
+            token_data = self.internal_access_tokens[access_token]
+            if port in self.node.network_chains[token_data['chain_token']]:
+                data = self.get_doc_by_index(token_data['index'][0], token_data['index'][1])
+                del self.internal_access_tokens[access_token]
+                return data
+        return None
+
+    def sync_access_tokens(self, internal_access_tokens, external_access_tokens):
+        self.internal_access_tokens = internal_access_tokens
+        self.external_access_tokens = external_access_tokens
+
         # network function
+
     def replace_data(self, chain, pool, peers, next_peer):
         self.peers = peers
         self.next_peer = next_peer
@@ -208,12 +321,14 @@ class Interface:
              'pool': self.bc.documentMap, 'peers': self.peers, 'next_peer': self.next_peer}))
         self.send_data(self.prepare_request(
             {'chain_token': self.token, 'route': 'sync_peers', 'peers': self.peers, 'root_peer': self.root_port}))
-        return True
+        self.node.send_data({"route": "sync_network_chains", "chain_token": self.token, "peers": self.peers})
+        return self.peers
 
     # network function
     def sync_peers(self,newpeers, root_peer):
         self.peers = newpeers
         self.root_port = root_peer
+        return self.peers
 
 
     # network function

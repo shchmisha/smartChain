@@ -1,41 +1,52 @@
-import numpy as np
+from matrix import Matrix
+import math
 
 
 class NeuralNetwork:
     def __init__(self, input, hidden, output, lr):
-        self.hidden_weights = np.random.rand(input, hidden)
-        self.output_weights = np.random.rand(hidden, output)
+        self.hidden_weights = Matrix(input, hidden)
+        self.output_weights = Matrix(hidden, output)
+        Matrix.matrix_randomize(self.hidden_weights)
+        Matrix.matrix_randomize(self.output_weights)
         self.input = input
         self.hidden = hidden
         self.output = output
         self.learning_rate = lr
 
     def sigmoid(self, mat):
-        return 1 / (1 + np.exp(-1 * mat))
+        return 1 / (1 + math.exp(-1 * mat))
 
     def sigmoid_prime(self, mat):
-        ones = np.ones(mat.shape)
-        return (ones - mat) * mat
+        ones = Matrix(mat.rows, mat.cols)
+        Matrix.matrix_fill(ones, 1)
+        return Matrix.multiply_matrix(mat, Matrix.subtract_matrix(ones, mat))
 
     def softmax(self, Z):
-        # calculates the softmax value for a matrix
-        # collapses the matrix into one row
-        A = np.exp(Z) / sum(np.exp(Z))
-        return A
+        total = 0
+        for i in range(Z.rows):
+            for j in range(Z.cols):
+                total += math.exp(Z.entries[i][j])
+        mat = Matrix(Z.rows, Z.cols)
+        for i in range(mat.rows):
+            for j in range(mat.cols):
+                mat.entries[i][j] = math.exp(Z.entries[i][j]) / total
+        return mat
 
     def forward_prop(self, X):
-        Z1 = np.dot(self.hidden_weights, X)
-        A1 = self.sigmoid(Z1)
-        Z2 = np.dot(self.output_weights, A1)
-        A2 = self.sigmoid(Z2)
+        Z1 = Matrix.dot_matrix(self.hidden_weights, X)
+        A1 = Matrix.apply_matrix(Z1, self.sigmoid)
+        Z2 = Matrix.dot_matrix(self.output_weights, A1)
+        A2 = Matrix.apply_matrix(Z2, self.sigmoid)
         return Z1, A1, Z2, A2
 
     def back_prop(self, Z1, A1, Z2, A2, X, Y):
-        E2 = Y - A2
-        E1 = np.dot(self.output_weights.T, E2)
+        E2 = Matrix.subtract_matrix(Y, A2)
+        E1 = Matrix.dot_matrix(Matrix.transpose(self.output_weights), E2)
 
-        new_output_weights = self.output_weights + self.learning_rate * np.dot(E2 * self.sigmoid_prime(A2), A1.T)
-        new_hidden_weights = self.hidden_weights + self.learning_rate * np.dot(E1 * self.sigmoid_prime(A1), X.T)
+        new_output_weights = Matrix.add_matrix(self.output_weights, Matrix.scale(self.learning_rate, Matrix.dot_matrix(
+            Matrix.multiply_matrix(E2, self.sigmoid_prime(A2)), Matrix.transpose(A1))))
+        new_hidden_weights = Matrix.add_matrix(self.hidden_weights, Matrix.scale(self.learning_rate, Matrix.dot_matrix(
+            Matrix.multiply_matrix(E1, self.sigmoid_prime(A1)), Matrix.transpose(X))))
 
         return new_hidden_weights, new_output_weights
 
@@ -49,3 +60,6 @@ class NeuralNetwork:
         Z1, A1, Z2, A2 = self.forward_prop(X)
         res = self.softmax(A2)
         return res
+
+    def train_batch_imgs(self):
+        pass

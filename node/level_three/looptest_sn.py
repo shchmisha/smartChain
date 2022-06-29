@@ -9,15 +9,20 @@ from struct import pack, unpack
 
 from node.level_two.looptest_vm import Interface
 from node.level_two.wallet import Wallet
+
 host = 'localhost'
 
 
 # add a signalling where a test message is sent out and then if any node responds then they are activeand valid
 
+# when a chain is created, it sends out a sync message
+# innthat sync function, add the chain to the local sync
+
 class SocketNode:
     def __init__(self, PORT, ROOT_PORT, HOST):
         # each new chain must have a root node for its own sub network
         self.chains = {}
+        self.network_chains = {}
         self.lock = threading.Lock()
         self.connections = []
         self.peers = [ROOT_PORT]
@@ -51,7 +56,7 @@ class SocketNode:
         chain_token = str(secrets.token_bytes(16).hex())
         new_chain = Interface(user_wallet.eccPublicKey, self.PORT, self.PORT, chain_token,
                               interface_wallet.serializePrivate(),
-                              interface_wallet.getSerializedKey(), self.HOST)
+                              interface_wallet.getSerializedKey(), self.HOST, self)
         self.chains[chain_token] = new_chain
 
         # introduce thread locks everywhere
@@ -83,7 +88,7 @@ class SocketNode:
         # takes the token, sign and the root port
         # inside the vm, sends a request tothe root node to sync
         if chain_token not in self.chains.keys():
-            new_chain = Interface(user_pk, root, self.PORT, chain_token, eccPrivateKey, skey, self.HOST)
+            new_chain = Interface(user_pk, root, self.PORT, chain_token, eccPrivateKey, skey, self.HOST, self)
             self.chains[chain_token] = new_chain
         # new_chain.start()
 
@@ -235,7 +240,8 @@ class SocketNode:
                 if 'pk_signature' not in data:
                     print(data['route'])
                 if chain.verify_request(data):
-                    self.chains[chain_token].sync(data['port'])
+                    new_chain_peers = self.chains[chain_token].sync(data['port'])
+                    self.network_chains[chain_token] = new_chain_peers
 
             elif data['route'] == 'sync_peers': #check
                 chain_token = data['chain_token']
@@ -245,7 +251,8 @@ class SocketNode:
                 if 'pk_signature' not in data:
                     print(data['route'])
                 if chain.verify_request(data):
-                    self.chains[chain_token].sync_peers(data['peers'], data['root_peer'])
+                    new_chain_peers = self.chains[chain_token].sync_peers(data['peers'], data['root_peer'])
+                    self.network_chains[chain_token] = new_chain_peers
             #####################
             elif data['route'] == 'add_chain':
                 # print("add chain")
@@ -261,9 +268,23 @@ class SocketNode:
                 self.sync(data['port'])
             elif data['route'] == 'sync_node_peers':
                 self.sync_peers(data['peers'], data['root_peer'])
+            elif data['route'] == 'sync_network_chains':
+                self.network_chains[data["chain_token"]] = data["peers"]
             elif data['route'] == 'upload_script':
                 chain_token = data['chain_token']
                 self.chains[chain_token].add_script(data)
+            elif data['route'] == 'request_access':
+                chain_token = data['chain_token']
+                accessed_data = self.chains[chain_token].access_data(chain_token, data['access_token'], addr[1])
+                conn.send(json.dumps(accessed_data).encode('utf-8'))
+            elif data['route'] == 'receive_access':
+                chain_token = data['chain_token']
+                self.chains[chain_token].receive_access()
+            elif data['route'] == 'sync_access_tokens':
+                chain_token = data['chain_token']
+                chain = self.chains[chain_token]
+                if chain.verify_request(data):
+                    chain.sync_access_tokens(data['internal_access_tokens'], data['external_access_tokens'])
             else:
                 # {'chain_token':'chain_token', 'route':'route', 'content': {}}
                 chain_token = data['chain_token']
